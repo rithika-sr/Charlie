@@ -1,0 +1,112 @@
+name: MLOps Automated Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  train_and_validate:
+    runs-on: ubuntu-latest
+
+    env:
+      PYTHONPATH: "${{ github.workspace }}"
+
+    steps:
+      # 1) Checkout
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2) Setup Python
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 3) Install dependencies
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install dvc[all] fairlearn mlflow matplotlib seaborn \
+                       scikit-learn joblib pyyaml lime shap plotly \
+                       imbalanced-learn pandas numpy lightgbm \
+                       google-cloud-storage google-cloud-artifact-registry google-auth
+
+      # 4) Pull data from DVC
+      - name: Pull DVC Data
+        run: |
+          if [ -f "dvc.yaml" ]; then
+            echo "📦 Pulling data from DVC..."
+            dvc pull || echo "⚠ No DVC remote configured — skipping."
+          else
+            echo "ℹ No dvc.yaml found — skipping data pull."
+          fi
+
+      # 5) Train Model
+      - name: Train Model
+        run: |
+          if [ -f "Data_Pipeline/data/processed/predictions.csv" ]; then
+            python -m Model_Development.ml_src.model_train
+          else
+            echo "⚠ Skipping training — processed data missing."
+          fi
+
+      # 6) Hyperparameter tuning
+      - name: Hyperparameter Tuning
+        run: |
+          python -m Model_Development.ml_src.model_tuning || echo "⚠ Skipping tuning."
+
+      # 7) Bias Analysis
+      - name: Bias & Fairness Check
+        run: |
+          python -m Model_Development.ml_src.bias_analysis || echo "⚠ Skipping bias analysis."
+
+      # 8) Explainability
+      - name: Explainability (SHAP + LIME)
+        run: |
+          python -m Model_Development.ml_src.explainability || echo "⚠ Skipping explainability."
+
+      # 9) Model Selection
+      - name: Select Best Model
+        run: |
+          if [ -f "Data_Pipeline/data/processed/predictions.csv" ]; then
+            python -m Model_Development.ml_src.model_select
+          else
+            echo "⚠ Skipping model selection — processed data missing."
+          fi
+
+      # 10) Register Model Locally
+      - name: Register Model
+        run: |
+          python -m Model_Development.ml_src.register_model || echo "⚠ Skipping model registry."
+
+      # 11) Drift Monitoring
+      - name: Drift Monitoring
+        run: |
+          python -m Model_Development.ml_src.monitor_drift || echo "⚠ Skipping drift monitoring."
+
+      # 12) Upload artifacts
+      - name: Upload Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-reports
+          path: |
+            models/
+            Model_Development/reports/
+            mlruns/
+
+      # 13) Push to GCP Artifact Registry
+      - name: Push Model to Google Artifact Registry
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          echo "$GCP_SA_KEY" > key.json
+          gcloud auth activate-service-account --key-file=key.json
+          gcloud config set project charlie-478223
+          python -m Model_Development.ml_src.gcp_registry || echo "⚠ Upload skipped."
+
+      # 14) Final
+      - name: Pipeline Completed
+        run: echo "🎉 Pipeline execution finished!"

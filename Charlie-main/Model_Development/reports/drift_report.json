@@ -1,0 +1,23 @@
+{
+    "feature_drift": {
+        "direction_id": {
+            "ks_stat": 0.0013215809802624712,
+            "p_value": 0.9998332138504428,
+            "drift_detected": false
+        },
+        "stop_sequence": {
+            "ks_stat": 0.017546820877120884,
+            "p_value": 5.058461858613429e-18,
+            "drift_detected": true
+        }
+    },
+    "target_drift": {
+        "ks_stat": 2.627372906571779e-06,
+        "p_value": 1.0,
+        "drift_detected": false
+    },
+    "psi_scores": {
+        "direction_id": 6.989774381572941e-06,
+        "stop_sequence": 0.0004677256619726873
+    }
+}

@@ -1,0 +1,6 @@
+{
+    "feature_drift": {
+        "direction_id": {
+            "ks_stat": 0.0013215809802624712,
+            "p_value": 0.9998332138504428,
+            "drift_detected": 
