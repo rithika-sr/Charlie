@@ -1,0 +1,20 @@
+{
+    "results": {
+        "baseline_lgbm": {
+            "accuracy": 0.999960679149726,
+            "f1": 0.0,
+            "roc_auc": 0.6789483618289633
+        },
+        "logreg_tuned": {
+            "accuracy": 0.6816977170314331,
+            "f1": 0.00014821768236950668,
+            "roc_auc": 0.80832061909181
+        },
+        "final_model_existing": {
+            "accuracy": 0.6816977170314331,
+            "f1": 0.00014821768236950668,
+            "roc_auc": 0.80832061909181
+        }
+    },
+    "best_model": "logreg_tuned"
+}

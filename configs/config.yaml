@@ -1,0 +1,9 @@
+experiment:
+  name: "charlie_mbta_model_dev"
+  tracking_uri: "file:./Model_Development/mlruns"
+
+training:
+  target_column: "delayed"
+  test_size: 0.2
+  random_state: 42
+  metrics: ["accuracy", "precision", "recall", "f1", "roc_auc"]

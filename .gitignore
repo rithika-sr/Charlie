@@ -1,0 +1,93 @@
+# ==============================
+# Python
+# ==============================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+*.log
+*.tmp
+*.swp
+
+# ==============================
+# Environment and Secrets
+# ==============================
+.env
+*.env
+credentials.json
+secrets.yaml
+
+# ==============================
+# Airflow & Logs
+# ==============================
+logs/
+*/logs/
+airflow-webserver.pid
+airflow.db
+*.err
+*.out
+
+# ==============================
+# Data & Outputs
+# ==============================
+Data_Pipeline/data/processed/
+Data_Pipeline/data/raw/
+Data_Pipeline/data/validation/
+Data_Pipeline/output/
+Data_Pipeline/data/*.json
+Data_Pipeline/data/*.csv
+Data_Pipeline/data/*.yaml
+
+# ==============================
+# DVC Cache / Temp
+# ==============================
+.dvc/tmp/
+.dvc/cache/
+.cache/
+*.dvc.lock
+
+# ==============================
+# Docker / Compose
+# ==============================
+*.pid
+*.tar
+*.gz
+*.bak
+*.tmp
+docker-compose.override.yml
+
+# ==============================
+# IDE / Editor Configs
+# ==============================
+.vscode/
+.idea/
+*.code-workspace
+*.sublime-project
+*.sublime-workspace
+
+# ==============================
+# macOS / System
+# ==============================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ==============================
+# Jupyter & Notebooks (if any)
+# ==============================
+.ipynb_checkpoints
+*.ipynb
+# Ignore MLflow runs
+mlruns/
+
+# Ignore Python virtual environment
+.venv/

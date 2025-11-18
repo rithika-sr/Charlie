@@ -1,0 +1,13 @@
+pandas>=2.2
+scikit-learn>=1.4
+pytest>=7.0
+pyyaml>=6.0
+dvc>=3.50
+great-expectations>=0.18
+ydata-profiling>=4.7.0
+requests>=2.31
+apache-airflow==2.9.*
+fairlearn==0.10.0
+protobuf==3.20.3
+fastapi
+uvicorn[standard]

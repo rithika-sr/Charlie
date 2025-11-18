@@ -1,0 +1,12 @@
+# ml_configs/paths.yaml
+data:
+  processed_dir: "Data_Pipeline/data/processed"
+  predictions: "Data_Pipeline/data/processed/predictions.csv"
+  vehicles: "Data_Pipeline/data/processed/vehicles.csv"
+  alerts: "Data_Pipeline/data/processed/alerts.csv"
+
+validation:
+  min_rows:
+    predictions: 1000
+    vehicles: 100
+    alerts: 50

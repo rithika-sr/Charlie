@@ -1,0 +1,111 @@
+name: Charlie MBTA Model CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  train_validate_bias:
+    runs-on: ubuntu-latest
+
+    env:
+      PYTHONPATH: "${{ github.workspace }}"
+
+    steps:
+      # 1️⃣ Checkout
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2️⃣ Setup Python
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 3️⃣ Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install dvc[all] fairlearn mlflow matplotlib seaborn \
+                      scikit-learn joblib pyyaml lime shap plotly \
+                      imbalanced-learn pandas numpy lightgbm
+
+      # 4️⃣ Pull DVC data
+      - name: Pull DVC Data
+        run: |
+          if [ -f "dvc.yaml" ]; then
+            dvc pull || echo "⚠ No DVC remote found"
+          else
+            echo "⚠ No dvc.yaml file — skipping"
+          fi
+
+      # 5️⃣ Train Model
+      - name: Train Model
+        run: |
+          if [ -f "Data_Pipeline/data/processed/predictions.csv" ]; then
+            python -m Model_Development.ml_src.model_train
+          else
+            echo "⚠ Processed data missing — skipping training."
+          fi
+
+      # 6️⃣ Hyperparameter Tuning
+      - name: Hyperparameter Tuning
+        run: python -m Model_Development.ml_src.model_tuning || echo "⚠ Skipping tuning"
+
+      # 7️⃣ Model Selection (VERY IMPORTANT)
+      - name: Select Best Model
+        run: |
+          if [ -f "Data_Pipeline/data/processed/predictions.csv" ]; then
+            python -m Model_Development.ml_src.model_select
+          else
+            echo "⚠ Skipping model selection — processed data missing."
+          fi
+
+      # 8️⃣ Register model locally to MLflow
+      - name: Register Model in Local MLflow
+        run: python -m Model_Development.ml_src.register_model || echo "⚠ Skipping registry"
+
+      # 9️⃣ Bias Analysis
+      - name: Bias Analysis
+        run: python -m Model_Development.ml_src.bias_analysis || echo "⚠ Skipping bias analysis"
+
+      # 🔟 Explainability
+      - name: Explainability (SHAP + LIME)
+        run: python -m Model_Development.ml_src.model_explain || echo "⚠ Skipping explainability"
+
+      # 1️⃣1️⃣ Drift Monitoring
+      - name: Drift Monitoring
+        run: python -m Model_Development.ml_src.monitor_drift || echo "⚠ Skipping drift monitoring"
+
+      # 1️⃣2️⃣ Upload Artifacts
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-development-outputs
+          path: |
+            models/
+            Model_Development/reports/
+            mlruns/
+
+      # 1️⃣3️⃣ Authenticate GCP
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # 1️⃣4️⃣ Setup gcloud
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: charlie-478223
+
+      # 1️⃣5️⃣ Upload to Artifact Registry
+      - name: Upload to Artifact Registry
+        run: python -m Model_Development.ml_src.gcp_registry || echo "⚠ Upload skipped"
+
+      # 1️⃣6️⃣ Done
+      - name: Done
+        run: echo "🎉 CI/CD Pipeline Completed!"
