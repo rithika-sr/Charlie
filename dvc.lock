@@ -1,0 +1,168 @@
+schema: '2.0'
+stages:
+  fetch_routes:
+    cmd: python Data_Pipeline/scripts/fetch_all_routes.py
+    deps:
+    - path: Data_Pipeline/scripts/fetch_all_routes.py
+      hash: md5
+      md5: 77d7eb4ad0c0ce954d3476e69342efea
+      size: 2217
+    outs:
+    - path: Data_Pipeline/data/all_routes.json
+      hash: md5
+      md5: 6655760d8569e38e7e99f6f071f59e22
+      size: 2057
+    - path: Data_Pipeline/data/all_routes.yaml
+      hash: md5
+      md5: 0dbbaeb985fe6b9a6980d79c7acd3d39
+      size: 1458
+  fetch:
+    cmd: python Data_Pipeline/scripts/fetch_data.py
+    deps:
+    - path: Data_Pipeline/data/all_routes.yaml
+      hash: md5
+      md5: 0dbbaeb985fe6b9a6980d79c7acd3d39
+      size: 1458
+    - path: Data_Pipeline/scripts/fetch_data.py
+      hash: md5
+      md5: b0982b3de5d47005627e70d036ce83b1
+      size: 3633
+    - path: params.yaml
+      hash: md5
+      md5: 2f5b2d8c46c6e40d3da6938edae43180
+      size: 939
+    outs:
+    - path: Data_Pipeline/data/raw
+      hash: md5
+      md5: d1b32e36fcadb6b684ec0a62847e2b63.dir
+      size: 32545512
+      nfiles: 179
+  preprocess:
+    cmd: python Data_Pipeline/scripts/preprocess_data.py
+    deps:
+    - path: Data_Pipeline/data/raw
+      hash: md5
+      md5: d1b32e36fcadb6b684ec0a62847e2b63.dir
+      size: 32545512
+      nfiles: 179
+    - path: Data_Pipeline/scripts/preprocess_data.py
+      hash: md5
+      md5: 0a761876ca39cd5507296e3db383b353
+      size: 4923
+    - path: params.yaml
+      hash: md5
+      md5: 2f5b2d8c46c6e40d3da6938edae43180
+      size: 939
+    outs:
+    - path: Data_Pipeline/data/processed/alerts.csv
+      hash: md5
+      md5: c07909cf1f3c3db91ae52bcfaf6e0fb1
+      size: 245466
+    - path: Data_Pipeline/data/processed/predictions.csv
+      hash: md5
+      md5: 2b4b109318dcfd7977902fa5fcbd9698
+      size: 1751573
+    - path: Data_Pipeline/data/processed/vehicles.csv
+      hash: md5
+      md5: 9cbd12e8661ae983f1475d1a6d287e51
+      size: 159667
+  validate:
+    cmd: python Data_Pipeline/scripts/validate_schema.py
+    deps:
+    - path: Data_Pipeline/data/processed/alerts.csv
+      hash: md5
+      md5: c07909cf1f3c3db91ae52bcfaf6e0fb1
+      size: 245466
+    - path: Data_Pipeline/data/processed/predictions.csv
+      hash: md5
+      md5: 2b4b109318dcfd7977902fa5fcbd9698
+      size: 1751573
+    - path: Data_Pipeline/data/processed/vehicles.csv
+      hash: md5
+      md5: 9cbd12e8661ae983f1475d1a6d287e51
+      size: 159667
+    - path: Data_Pipeline/scripts/validate_schema.py
+      hash: md5
+      md5: aa16eacaa171c1a50012aa7a2f431b26
+      size: 1743
+    - path: params.yaml
+      hash: md5
+      md5: 2f5b2d8c46c6e40d3da6938edae43180
+      size: 939
+    outs:
+    - path: Data_Pipeline/data/validation/schema_validation_report.json
+      hash: md5
+      md5: 6c5b49f71ed10d133bfc776e0aa6bb2e
+      size: 1936
+  anomalies:
+    cmd: python Data_Pipeline/scripts/detect_anomalies.py
+    deps:
+    - path: Data_Pipeline/data/processed/alerts.csv
+      hash: md5
+      md5: c07909cf1f3c3db91ae52bcfaf6e0fb1
+      size: 245466
+    - path: Data_Pipeline/data/processed/predictions.csv
+      hash: md5
+      md5: 2b4b109318dcfd7977902fa5fcbd9698
+      size: 1751573
+    - path: Data_Pipeline/data/processed/vehicles.csv
+      hash: md5
+      md5: 9cbd12e8661ae983f1475d1a6d287e51
+      size: 159667
+    - path: Data_Pipeline/scripts/detect_anomalies.py
+      hash: md5
+      md5: 632ad5a54453cf74d7e775c46d7a574c
+      size: 2929
+    - path: params.yaml
+      hash: md5
+      md5: 2f5b2d8c46c6e40d3da6938edae43180
+      size: 939
+    outs:
+    - path: Data_Pipeline/data/validation/anomaly_report.json
+      hash: md5
+      md5: c41cdb533ae3a440a9af1ce2d5e8c5b9
+      size: 176
+  schema_stats:
+    cmd: python Data_Pipeline/scripts/validate_schema_profile.py
+    deps:
+    - path: Data_Pipeline/data/processed/alerts.csv
+      hash: md5
+      md5: c07909cf1f3c3db91ae52bcfaf6e0fb1
+      size: 245466
+    - path: Data_Pipeline/data/processed/predictions.csv
+      hash: md5
+      md5: 2b4b109318dcfd7977902fa5fcbd9698
+      size: 1751573
+    - path: Data_Pipeline/data/processed/vehicles.csv
+      hash: md5
+      md5: 9cbd12e8661ae983f1475d1a6d287e51
+      size: 159667
+    - path: Data_Pipeline/scripts/validate_schema_profile.py
+      hash: md5
+      md5: e911e674fe8193587bea789f91b7a40f
+      size: 2899
+    - path: params.yaml
+      hash: md5
+      md5: 2f5b2d8c46c6e40d3da6938edae43180
+      size: 939
+    outs:
+    - path: Data_Pipeline/data/validation/profiling_schema_report.json
+      hash: md5
+      md5: e9140a114227d16c4aad00081426cee8
+      size: 1796
+  bias_detection:
+    cmd: python Data_Pipeline/scripts/detect_bias.py
+    deps:
+    - path: Data_Pipeline/data/processed/predictions.csv
+      hash: md5
+      md5: 2b4b109318dcfd7977902fa5fcbd9698
+      size: 1751573
+    - path: Data_Pipeline/scripts/detect_bias.py
+      hash: md5
+      md5: 23bdea6ade2f5ec726204bd7ad40c423
+      size: 3904
+    outs:
+    - path: Data_Pipeline/data/validation/bias_report.csv
+      hash: md5
+      md5: 67397d510f6aa3650632b829c94a4efd
+      size: 5085

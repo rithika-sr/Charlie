@@ -1,0 +1,40 @@
+project_name: "MBTA Data Pipeline"
+
+data:
+  base_url: "https://api-v3.mbta.com"
+  raw_dir: "Data_Pipeline/data/raw"
+  processed_dir: "Data_Pipeline/data/processed"
+  validation_dir: "Data_Pipeline/data/validation"
+  all_routes_file: "Data_Pipeline/data/all_routes.yaml"
+  endpoints:
+    predictions: "/predictions"
+    vehicles: "/vehicles"
+    alerts: "/alerts"
+
+  # Snapshot interval (used later in Airflow scheduling if desired)
+  snapshot_interval_minutes: 5
+
+logging:
+  level: "INFO"
+
+schema:
+  predictions_expected:
+    - id
+    - attributes.arrival_time
+    - attributes.departure_time
+    - relationships.route.data.id
+  vehicles_expected:
+    - id
+    - attributes.latitude
+    - attributes.longitude
+    - relationships.route.data.id
+  alerts_expected:
+    - id
+    - attributes.effect
+    - attributes.cause
+    - attributes.updated_at
+
+anomaly_thresholds:
+  invalid_latitude: 5
+  invalid_longitude: 5
+  missing_arrival_time: 20
