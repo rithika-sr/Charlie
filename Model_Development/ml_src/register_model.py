@@ -75,6 +75,7 @@ def main():
 
     except Exception as e:
         logger.error(f"❌ Model registration failed: {str(e)}")
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

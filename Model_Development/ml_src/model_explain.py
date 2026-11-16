@@ -63,6 +63,7 @@ def explain_model():
     shap_plot_path = reports_dir / "shap_summary.png"
     shap_csv_path = reports_dir / "shap_importance.csv"
     lime_html_path = reports_dir / "lime_explanation.html"
+    failures = []   # reported together at the end, so one failure doesn't hide the other
 
     # ======================================================
     # 1️⃣ SHAP GLOBAL EXPLANATION
@@ -93,7 +94,8 @@ def explain_model():
         logger.info(f"📄 SHAP importance CSV → {shap_csv_path}")
 
     except Exception as e:
-        logger.warning(f"⚠️ SHAP failed: {e}")
+        logger.error(f"❌ SHAP failed: {e}")
+        failures.append("SHAP")
         shap_plot_path = None
         shap_csv_path = None
 
@@ -118,7 +120,8 @@ def explain_model():
         logger.info(f"📄 LIME explanation saved → {lime_html_path}")
 
     except Exception as e:
-        logger.warning(f"⚠️ LIME failed: {e}")
+        logger.error(f"❌ LIME failed: {e}")
+        failures.append("LIME")
         lime_html_path = None
 
     # ======================================================
@@ -139,8 +142,12 @@ def explain_model():
         logger.info("📡 Explainability artifacts logged to MLflow.")
 
     except Exception as e:
-        logger.warning(f"⚠️ MLflow logging failed: {e}")
+        logger.error(f"❌ MLflow logging failed: {e}")
+        failures.append("MLflow logging")
 
+    if failures:
+        logger.error(f"❌ Explainability failed: {', '.join(failures)}")
+        raise SystemExit(1)
     logger.info("🎯 MODEL EXPLAINABILITY COMPLETED")
 
 

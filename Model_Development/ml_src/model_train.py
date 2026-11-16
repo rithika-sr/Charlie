@@ -66,7 +66,7 @@ def main():
         df_pred = paths.load_all()["predictions"]
     except Exception as e:
         logger.error(f"❌ Failed to load processed data: {e}")
-        return
+        raise SystemExit(1)
 
     logger.info(f"📥 Loaded predictions: {df_pred.shape}")
 
@@ -77,7 +77,7 @@ def main():
 
     if len(X) == 0:
         logger.error("❌ No valid rows after preprocessing.")
-        return
+        raise SystemExit(1)
 
     X_train, X_val, y_train, y_val = train_test_split(
         X, y, test_size=0.2, stratify=y, random_state=42

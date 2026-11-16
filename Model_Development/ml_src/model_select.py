@@ -160,7 +160,8 @@ def main():
         logger.info("📌 Model selection logged to MLflow.")
 
     except Exception as e:
-        logger.warning(f"⚠️ MLflow logging failed: {e}")
+        logger.error(f"❌ MLflow logging failed: {e}")
+        raise SystemExit(1)
 
     logger.info("🎯 Model Selection Completed Successfully!")
 

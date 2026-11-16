@@ -35,7 +35,7 @@ def train_and_log():
         df_pred = paths.load_all()["predictions"]
     except Exception as e:
         logger.error(f"❌ Cannot load processed data: {e}")
-        return
+        raise SystemExit(1)
 
     logger.info(f"📥 Loaded dataset: {df_pred.shape}")
 
@@ -51,8 +51,9 @@ def train_and_log():
     # SMOTE: Prevent crash when minority class is too small
     # ------------------------------
     if n_pos < 2:
-        logger.warning("❌ Too few positive samples for SMOTE. Skipping tuning.")
-        return
+        logger.error(f"❌ Only {n_pos} positive (delayed) sample(s); tuning needs at least 2. "
+                     "Check the delay label and the training data.")
+        raise SystemExit(1)
 
     smote = SMOTE(k_neighbors=1, random_state=42)
     X_res, y_res = smote.fit_resample(X, y)
