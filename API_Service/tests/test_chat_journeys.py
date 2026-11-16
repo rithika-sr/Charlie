@@ -135,6 +135,9 @@ def test_what_about_hynes_keeps_the_origin(client, services):
     ("how do I get back?", ("Harvard", "Chiswick Road")),
     ("and to Kenmore", ("Chiswick Road", "Kenmore")),
     ("refresh", ("Chiswick Road", "Harvard")),
+    ("and to Copley instead", ("Chiswick Road", "Copley")),        # found in browser verification
+    ("what about Kenmore then?", ("Chiswick Road", "Kenmore")),
+    ("how about from Park Street instead?", ("Park Street", "Harvard")),
 ])
 def test_follow_ups(client, services, message, expected):
     ctx = ask(client, "chiswick rd to harvard")["context"]

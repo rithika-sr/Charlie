@@ -82,8 +82,9 @@ def _clean(text):
 
 
 def _place(text):
-    t = re.sub(r"^(?:the|a)\s+", "", str(text or "").strip(" ,.?!"), flags=re.I)
-    t = re.sub(r"\s+(?:please|now|right now|asap|today)$", "", t, flags=re.I)
+    t = re.sub(r"^(?:the|a|instead)\s+", "", str(text or "").strip(" ,.?!"), flags=re.I)
+    # Words that qualify the request, not the place: "Copley instead", "Kenmore then".
+    t = re.sub(r"(?:\s+(?:please|now|right now|asap|today|instead|then|too|as well))+$", "", t, flags=re.I)
     return t.strip(" ,") or None
 
 
