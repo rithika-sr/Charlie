@@ -91,3 +91,6 @@ mlruns/
 
 # Ignore Python virtual environment
 .venv/
+Model_Development/data/raw_events_2025/*.csv
+.vercel
+.env*

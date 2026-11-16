@@ -1,0 +1,36 @@
+name: Deploy to Cloud Run
+
+# Production now runs on Vercel; GCP billing is disabled, so this only runs manually.
+on:
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: charlie-478223
+  REGION: us-east1
+  SERVICE_NAME: charlie-mbta-api
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      
+      - uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Build and Deploy
+        run: |
+          gcloud auth configure-docker gcr.io --quiet
+          cd API_Service
+          docker build --platform linux/amd64 -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest .
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest \
+            --region ${{ env.REGION }} \
+            --allow-unauthenticated \
+            --memory 2Gi \
+            --cpu 2 \
+            --set-env-vars "MBTA_API_KEY=${{ secrets.MBTA_API_KEY }},OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}"

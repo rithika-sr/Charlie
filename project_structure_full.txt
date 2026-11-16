@@ -1,0 +1,3183 @@
+.
+├── __init__.py
+├── API_Service
+│   ├── __init__.py
+│   ├── api
+│   │   ├── __init__.py
+│   │   ├── chatbot.py
+│   │   ├── mbta_client.py
+│   │   ├── model_loader.py
+│   │   └── stop_finder.py
+│   ├── app.py
+│   ├── deploy_model.py
+│   ├── Dockerfile
+│   ├── models
+│   │   └── final_model.joblib
+│   └── requirements.txt
+├── charlie_model_v20251115-204230.tar.gz
+├── configs
+│   └── config.yaml
+├── Data_Pipeline
+│   ├── __init__.py
+│   ├── dags
+│   │   ├── __init__.py
+│   │   ├── data_collection_dag.py
+│   │   ├── data_processing_dag.py
+│   │   ├── data_quality_dag.py
+│   │   └── mbta_pipeline_dvc.py
+│   ├── data
+│   │   ├── all_routes.json
+│   │   ├── all_routes.yaml
+│   │   ├── processed
+│   │   │   ├── alerts.csv
+│   │   │   ├── anomaly_report.json
+│   │   │   ├── predictions.csv
+│   │   │   ├── schema_validation_report.json
+│   │   │   └── vehicles.csv
+│   │   ├── raw
+│   │   │   ├── alerts
+│   │   │   │   ├── alerts_20251028_130826.json
+│   │   │   │   ├── alerts_20251028_151648.json
+│   │   │   │   ├── alerts_20251028_152248.json
+│   │   │   │   ├── alerts_20251028_154932.json
+│   │   │   │   ├── alerts_20251028_161908.json
+│   │   │   │   ├── alerts_20251028_162519.json
+│   │   │   │   ├── alerts_20251028_164518.json
+│   │   │   │   └── alerts_20251028_171036.json
+│   │   │   ├── predictions
+│   │   │   │   ├── predictions_1_20251028_125932.json
+│   │   │   │   ├── predictions_1_20251028_151159.json
+│   │   │   │   ├── predictions_1_20251028_154042.json
+│   │   │   │   ├── predictions_1_20251028_160617.json
+│   │   │   │   ├── predictions_1_20251028_160838.json
+│   │   │   │   ├── predictions_1_20251028_161631.json
+│   │   │   │   ├── predictions_1_20251028_163728.json
+│   │   │   │   ├── predictions_1_20251028_170145.json
+│   │   │   │   ├── predictions_10_20251028_125938.json
+│   │   │   │   ├── predictions_10_20251028_151205.json
+│   │   │   │   ├── predictions_10_20251028_154148.json
+│   │   │   │   ├── predictions_10_20251028_160723.json
+│   │   │   │   ├── predictions_10_20251028_160844.json
+│   │   │   │   ├── predictions_10_20251028_161737.json
+│   │   │   │   ├── predictions_10_20251028_163734.json
+│   │   │   │   ├── predictions_10_20251028_170252.json
+│   │   │   │   ├── predictions_100_20251028_130406.json
+│   │   │   │   ├── predictions_100_20251028_151831.json
+│   │   │   │   ├── predictions_100_20251028_154514.json
+│   │   │   │   ├── predictions_100_20251028_161250.json
+│   │   │   │   ├── predictions_100_20251028_162202.json
+│   │   │   │   ├── predictions_100_20251028_164200.json
+│   │   │   │   ├── predictions_100_20251028_170618.json
+│   │   │   │   ├── predictions_101_20251028_130408.json
+│   │   │   │   ├── predictions_101_20251028_151832.json
+│   │   │   │   ├── predictions_101_20251028_154516.json
+│   │   │   │   ├── predictions_101_20251028_161251.json
+│   │   │   │   ├── predictions_101_20251028_162203.json
+│   │   │   │   ├── predictions_101_20251028_164201.json
+│   │   │   │   ├── predictions_101_20251028_170619.json
+│   │   │   │   ├── predictions_104_20251028_130409.json
+│   │   │   │   ├── predictions_104_20251028_151833.json
+│   │   │   │   ├── predictions_104_20251028_154517.json
+│   │   │   │   ├── predictions_104_20251028_161252.json
+│   │   │   │   ├── predictions_104_20251028_162205.json
+│   │   │   │   ├── predictions_104_20251028_164203.json
+│   │   │   │   ├── predictions_104_20251028_170620.json
+│   │   │   │   ├── predictions_105_20251028_130410.json
+│   │   │   │   ├── predictions_105_20251028_151834.json
+│   │   │   │   ├── predictions_105_20251028_154518.json
+│   │   │   │   ├── predictions_105_20251028_161353.json
+│   │   │   │   ├── predictions_105_20251028_162206.json
+│   │   │   │   ├── predictions_105_20251028_164204.json
+│   │   │   │   ├── predictions_105_20251028_170622.json
+│   │   │   │   ├── predictions_106_20251028_130411.json
+│   │   │   │   ├── predictions_106_20251028_151836.json
+│   │   │   │   ├── predictions_106_20251028_154519.json
+│   │   │   │   ├── predictions_106_20251028_161355.json
+│   │   │   │   ├── predictions_106_20251028_162207.json
+│   │   │   │   ├── predictions_106_20251028_164205.json
+│   │   │   │   ├── predictions_106_20251028_170623.json
+│   │   │   │   ├── predictions_108_20251028_130413.json
+│   │   │   │   ├── predictions_108_20251028_151837.json
+│   │   │   │   ├── predictions_108_20251028_154520.json
+│   │   │   │   ├── predictions_108_20251028_161356.json
+│   │   │   │   ├── predictions_108_20251028_162208.json
+│   │   │   │   ├── predictions_108_20251028_164206.json
+│   │   │   │   ├── predictions_108_20251028_170724.json
+│   │   │   │   ├── predictions_109_20251028_130414.json
+│   │   │   │   ├── predictions_109_20251028_151838.json
+│   │   │   │   ├── predictions_109_20251028_154521.json
+│   │   │   │   ├── predictions_109_20251028_161357.json
+│   │   │   │   ├── predictions_109_20251028_162209.json
+│   │   │   │   ├── predictions_109_20251028_164207.json
+│   │   │   │   ├── predictions_109_20251028_170725.json
+│   │   │   │   ├── predictions_11_20251028_125939.json
+│   │   │   │   ├── predictions_11_20251028_151206.json
+│   │   │   │   ├── predictions_11_20251028_154150.json
+│   │   │   │   ├── predictions_11_20251028_160725.json
+│   │   │   │   ├── predictions_11_20251028_160845.json
+│   │   │   │   ├── predictions_11_20251028_161738.json
+│   │   │   │   ├── predictions_11_20251028_163735.json
+│   │   │   │   ├── predictions_11_20251028_170253.json
+│   │   │   │   ├── predictions_110_20251028_130415.json
+│   │   │   │   ├── predictions_110_20251028_151839.json
+│   │   │   │   ├── predictions_110_20251028_154523.json
+│   │   │   │   ├── predictions_110_20251028_161358.json
+│   │   │   │   ├── predictions_110_20251028_162210.json
+│   │   │   │   ├── predictions_110_20251028_164209.json
+│   │   │   │   ├── predictions_110_20251028_170727.json
+│   │   │   │   ├── predictions_111_20251028_130416.json
+│   │   │   │   ├── predictions_111_20251028_151840.json
+│   │   │   │   ├── predictions_111_20251028_154624.json
+│   │   │   │   ├── predictions_111_20251028_161359.json
+│   │   │   │   ├── predictions_111_20251028_162212.json
+│   │   │   │   ├── predictions_111_20251028_164210.json
+│   │   │   │   ├── predictions_111_20251028_170728.json
+│   │   │   │   ├── predictions_112_20251028_130417.json
+│   │   │   │   ├── predictions_112_20251028_151841.json
+│   │   │   │   ├── predictions_112_20251028_154625.json
+│   │   │   │   ├── predictions_112_20251028_161401.json
+│   │   │   │   ├── predictions_112_20251028_162213.json
+│   │   │   │   ├── predictions_112_20251028_164211.json
+│   │   │   │   ├── predictions_112_20251028_170729.json
+│   │   │   │   ├── predictions_114_20251028_130419.json
+│   │   │   │   ├── predictions_114_20251028_151843.json
+│   │   │   │   ├── predictions_114_20251028_154626.json
+│   │   │   │   ├── predictions_114_20251028_161402.json
+│   │   │   │   ├── predictions_114_20251028_162214.json
+│   │   │   │   ├── predictions_114_20251028_164212.json
+│   │   │   │   ├── predictions_114_20251028_170730.json
+│   │   │   │   ├── predictions_116_20251028_130420.json
+│   │   │   │   ├── predictions_116_20251028_151844.json
+│   │   │   │   ├── predictions_116_20251028_154628.json
+│   │   │   │   ├── predictions_116_20251028_161403.json
+│   │   │   │   ├── predictions_116_20251028_162215.json
+│   │   │   │   ├── predictions_116_20251028_164213.json
+│   │   │   │   ├── predictions_116_20251028_170731.json
+│   │   │   │   ├── predictions_119_20251028_130421.json
+│   │   │   │   ├── predictions_119_20251028_151845.json
+│   │   │   │   ├── predictions_119_20251028_154629.json
+│   │   │   │   ├── predictions_119_20251028_161404.json
+│   │   │   │   ├── predictions_119_20251028_162216.json
+│   │   │   │   ├── predictions_119_20251028_164214.json
+│   │   │   │   ├── predictions_119_20251028_170732.json
+│   │   │   │   ├── predictions_120_20251028_130422.json
+│   │   │   │   ├── predictions_120_20251028_151846.json
+│   │   │   │   ├── predictions_120_20251028_154630.json
+│   │   │   │   ├── predictions_120_20251028_161405.json
+│   │   │   │   ├── predictions_120_20251028_162217.json
+│   │   │   │   ├── predictions_120_20251028_164216.json
+│   │   │   │   ├── predictions_120_20251028_170734.json
+│   │   │   │   ├── predictions_121_20251028_130423.json
+│   │   │   │   ├── predictions_121_20251028_151948.json
+│   │   │   │   ├── predictions_121_20251028_154631.json
+│   │   │   │   ├── predictions_121_20251028_161406.json
+│   │   │   │   ├── predictions_121_20251028_162219.json
+│   │   │   │   ├── predictions_121_20251028_164217.json
+│   │   │   │   ├── predictions_121_20251028_170735.json
+│   │   │   │   ├── predictions_131_20251028_130525.json
+│   │   │   │   ├── predictions_131_20251028_151949.json
+│   │   │   │   ├── predictions_131_20251028_154632.json
+│   │   │   │   ├── predictions_131_20251028_161408.json
+│   │   │   │   ├── predictions_131_20251028_162220.json
+│   │   │   │   ├── predictions_131_20251028_164218.json
+│   │   │   │   ├── predictions_131_20251028_170736.json
+│   │   │   │   ├── predictions_132_20251028_130526.json
+│   │   │   │   ├── predictions_132_20251028_151950.json
+│   │   │   │   ├── predictions_132_20251028_154633.json
+│   │   │   │   ├── predictions_132_20251028_161409.json
+│   │   │   │   ├── predictions_132_20251028_162221.json
+│   │   │   │   ├── predictions_132_20251028_164219.json
+│   │   │   │   ├── predictions_132_20251028_170737.json
+│   │   │   │   ├── predictions_134_20251028_130527.json
+│   │   │   │   ├── predictions_134_20251028_151951.json
+│   │   │   │   ├── predictions_134_20251028_154635.json
+│   │   │   │   ├── predictions_134_20251028_161410.json
+│   │   │   │   ├── predictions_134_20251028_162222.json
+│   │   │   │   ├── predictions_134_20251028_164220.json
+│   │   │   │   ├── predictions_134_20251028_170738.json
+│   │   │   │   ├── predictions_137_20251028_130529.json
+│   │   │   │   ├── predictions_137_20251028_151952.json
+│   │   │   │   ├── predictions_137_20251028_154636.json
+│   │   │   │   ├── predictions_137_20251028_161411.json
+│   │   │   │   ├── predictions_137_20251028_162324.json
+│   │   │   │   ├── predictions_137_20251028_164221.json
+│   │   │   │   ├── predictions_137_20251028_170739.json
+│   │   │   │   ├── predictions_14_20251028_125940.json
+│   │   │   │   ├── predictions_14_20251028_151208.json
+│   │   │   │   ├── predictions_14_20251028_154151.json
+│   │   │   │   ├── predictions_14_20251028_160726.json
+│   │   │   │   ├── predictions_14_20251028_160846.json
+│   │   │   │   ├── predictions_14_20251028_161740.json
+│   │   │   │   ├── predictions_14_20251028_163736.json
+│   │   │   │   ├── predictions_14_20251028_170254.json
+│   │   │   │   ├── predictions_15_20251028_125941.json
+│   │   │   │   ├── predictions_15_20251028_151209.json
+│   │   │   │   ├── predictions_15_20251028_154152.json
+│   │   │   │   ├── predictions_15_20251028_160727.json
+│   │   │   │   ├── predictions_15_20251028_160948.json
+│   │   │   │   ├── predictions_15_20251028_161741.json
+│   │   │   │   ├── predictions_15_20251028_163738.json
+│   │   │   │   ├── predictions_15_20251028_170255.json
+│   │   │   │   ├── predictions_16_20251028_125943.json
+│   │   │   │   ├── predictions_16_20251028_151210.json
+│   │   │   │   ├── predictions_16_20251028_154153.json
+│   │   │   │   ├── predictions_16_20251028_160728.json
+│   │   │   │   ├── predictions_16_20251028_160949.json
+│   │   │   │   ├── predictions_16_20251028_161742.json
+│   │   │   │   ├── predictions_16_20251028_163739.json
+│   │   │   │   ├── predictions_16_20251028_170256.json
+│   │   │   │   ├── predictions_17_20251028_125944.json
+│   │   │   │   ├── predictions_17_20251028_151211.json
+│   │   │   │   ├── predictions_17_20251028_154154.json
+│   │   │   │   ├── predictions_17_20251028_160730.json
+│   │   │   │   ├── predictions_17_20251028_160950.json
+│   │   │   │   ├── predictions_17_20251028_161743.json
+│   │   │   │   ├── predictions_17_20251028_163740.json
+│   │   │   │   ├── predictions_17_20251028_170258.json
+│   │   │   │   ├── predictions_171_20251028_130530.json
+│   │   │   │   ├── predictions_171_20251028_151953.json
+│   │   │   │   ├── predictions_171_20251028_154637.json
+│   │   │   │   ├── predictions_171_20251028_161513.json
+│   │   │   │   ├── predictions_171_20251028_162325.json
+│   │   │   │   ├── predictions_171_20251028_164223.json
+│   │   │   │   ├── predictions_171_20251028_170741.json
+│   │   │   │   ├── predictions_18_20251028_125945.json
+│   │   │   │   ├── predictions_18_20251028_151312.json
+│   │   │   │   ├── predictions_18_20251028_154156.json
+│   │   │   │   ├── predictions_18_20251028_160731.json
+│   │   │   │   ├── predictions_18_20251028_160952.json
+│   │   │   │   ├── predictions_18_20251028_161744.json
+│   │   │   │   ├── predictions_18_20251028_163741.json
+│   │   │   │   ├── predictions_18_20251028_170259.json
+│   │   │   │   ├── predictions_19_20251028_125946.json
+│   │   │   │   ├── predictions_19_20251028_151314.json
+│   │   │   │   ├── predictions_19_20251028_154157.json
+│   │   │   │   ├── predictions_19_20251028_160732.json
+│   │   │   │   ├── predictions_19_20251028_160953.json
+│   │   │   │   ├── predictions_19_20251028_161745.json
+│   │   │   │   ├── predictions_19_20251028_163742.json
+│   │   │   │   ├── predictions_19_20251028_170300.json
+│   │   │   │   ├── predictions_201_20251028_130531.json
+│   │   │   │   ├── predictions_201_20251028_151955.json
+│   │   │   │   ├── predictions_201_20251028_154638.json
+│   │   │   │   ├── predictions_201_20251028_161514.json
+│   │   │   │   ├── predictions_201_20251028_162326.json
+│   │   │   │   ├── predictions_201_20251028_164324.json
+│   │   │   │   ├── predictions_201_20251028_170742.json
+│   │   │   │   ├── predictions_202_20251028_130532.json
+│   │   │   │   ├── predictions_202_20251028_151956.json
+│   │   │   │   ├── predictions_202_20251028_154639.json
+│   │   │   │   ├── predictions_202_20251028_161515.json
+│   │   │   │   ├── predictions_202_20251028_162327.json
+│   │   │   │   ├── predictions_202_20251028_164325.json
+│   │   │   │   ├── predictions_202_20251028_170743.json
+│   │   │   │   ├── predictions_21_20251028_130048.json
+│   │   │   │   ├── predictions_21_20251028_151315.json
+│   │   │   │   ├── predictions_21_20251028_154158.json
+│   │   │   │   ├── predictions_21_20251028_160733.json
+│   │   │   │   ├── predictions_21_20251028_160954.json
+│   │   │   │   ├── predictions_21_20251028_161746.json
+│   │   │   │   ├── predictions_21_20251028_163744.json
+│   │   │   │   ├── predictions_21_20251028_170301.json
+│   │   │   │   ├── predictions_210_20251028_130533.json
+│   │   │   │   ├── predictions_210_20251028_151957.json
+│   │   │   │   ├── predictions_210_20251028_154641.json
+│   │   │   │   ├── predictions_210_20251028_161516.json
+│   │   │   │   ├── predictions_210_20251028_162328.json
+│   │   │   │   ├── predictions_210_20251028_164326.json
+│   │   │   │   ├── predictions_210_20251028_170744.json
+│   │   │   │   ├── predictions_211_20251028_130534.json
+│   │   │   │   ├── predictions_211_20251028_151157.json
+│   │   │   │   ├── predictions_211_20251028_151958.json
+│   │   │   │   ├── predictions_211_20251028_154642.json
+│   │   │   │   ├── predictions_211_20251028_161517.json
+│   │   │   │   ├── predictions_211_20251028_162329.json
+│   │   │   │   ├── predictions_211_20251028_164328.json
+│   │   │   │   ├── predictions_211_20251028_170745.json
+│   │   │   │   ├── predictions_215_20251028_130536.json
+│   │   │   │   ├── predictions_215_20251028_151158.json
+│   │   │   │   ├── predictions_215_20251028_151959.json
+│   │   │   │   ├── predictions_215_20251028_154643.json
+│   │   │   │   ├── predictions_215_20251028_161518.json
+│   │   │   │   ├── predictions_215_20251028_162330.json
+│   │   │   │   ├── predictions_215_20251028_164329.json
+│   │   │   │   ├── predictions_215_20251028_170746.json
+│   │   │   │   ├── predictions_216_20251028_130537.json
+│   │   │   │   ├── predictions_216_20251028_151200.json
+│   │   │   │   ├── predictions_216_20251028_152000.json
+│   │   │   │   ├── predictions_216_20251028_154644.json
+│   │   │   │   ├── predictions_216_20251028_161520.json
+│   │   │   │   ├── predictions_216_20251028_162332.json
+│   │   │   │   ├── predictions_216_20251028_164330.json
+│   │   │   │   ├── predictions_216_20251028_170848.json
+│   │   │   │   ├── predictions_217_20251028_130538.json
+│   │   │   │   ├── predictions_217_20251028_151201.json
+│   │   │   │   ├── predictions_217_20251028_152001.json
+│   │   │   │   ├── predictions_217_20251028_154645.json
+│   │   │   │   ├── predictions_217_20251028_161521.json
+│   │   │   │   ├── predictions_217_20251028_162333.json
+│   │   │   │   ├── predictions_217_20251028_164331.json
+│   │   │   │   ├── predictions_217_20251028_170849.json
+│   │   │   │   ├── predictions_22_20251028_130049.json
+│   │   │   │   ├── predictions_22_20251028_151316.json
+│   │   │   │   ├── predictions_22_20251028_154159.json
+│   │   │   │   ├── predictions_22_20251028_160734.json
+│   │   │   │   ├── predictions_22_20251028_160955.json
+│   │   │   │   ├── predictions_22_20251028_161848.json
+│   │   │   │   ├── predictions_22_20251028_163745.json
+│   │   │   │   ├── predictions_22_20251028_170303.json
+│   │   │   │   ├── predictions_220_20251028_130539.json
+│   │   │   │   ├── predictions_220_20251028_151202.json
+│   │   │   │   ├── predictions_220_20251028_152003.json
+│   │   │   │   ├── predictions_220_20251028_154647.json
+│   │   │   │   ├── predictions_220_20251028_161522.json
+│   │   │   │   ├── predictions_220_20251028_162334.json
+│   │   │   │   ├── predictions_220_20251028_164332.json
+│   │   │   │   ├── predictions_220_20251028_170850.json
+│   │   │   │   ├── predictions_222_20251028_130541.json
+│   │   │   │   ├── predictions_222_20251028_151203.json
+│   │   │   │   ├── predictions_222_20251028_152004.json
+│   │   │   │   ├── predictions_222_20251028_154748.json
+│   │   │   │   ├── predictions_222_20251028_161523.json
+│   │   │   │   ├── predictions_222_20251028_162335.json
+│   │   │   │   ├── predictions_222_20251028_164334.json
+│   │   │   │   ├── predictions_222_20251028_170852.json
+│   │   │   │   ├── predictions_225_20251028_130542.json
+│   │   │   │   ├── predictions_225_20251028_151204.json
+│   │   │   │   ├── predictions_225_20251028_152005.json
+│   │   │   │   ├── predictions_225_20251028_154749.json
+│   │   │   │   ├── predictions_225_20251028_161625.json
+│   │   │   │   ├── predictions_225_20251028_162336.json
+│   │   │   │   ├── predictions_225_20251028_164335.json
+│   │   │   │   ├── predictions_225_20251028_170853.json
+│   │   │   │   ├── predictions_226_20251028_130543.json
+│   │   │   │   ├── predictions_226_20251028_151205.json
+│   │   │   │   ├── predictions_226_20251028_152006.json
+│   │   │   │   ├── predictions_226_20251028_154750.json
+│   │   │   │   ├── predictions_226_20251028_161626.json
+│   │   │   │   ├── predictions_226_20251028_162338.json
+│   │   │   │   ├── predictions_226_20251028_164336.json
+│   │   │   │   ├── predictions_226_20251028_170854.json
+│   │   │   │   ├── predictions_23_20251028_130050.json
+│   │   │   │   ├── predictions_23_20251028_151317.json
+│   │   │   │   ├── predictions_23_20251028_154200.json
+│   │   │   │   ├── predictions_23_20251028_160836.json
+│   │   │   │   ├── predictions_23_20251028_160956.json
+│   │   │   │   ├── predictions_23_20251028_161849.json
+│   │   │   │   ├── predictions_23_20251028_163746.json
+│   │   │   │   ├── predictions_23_20251028_170304.json
+│   │   │   │   ├── predictions_230_20251028_130544.json
+│   │   │   │   ├── predictions_230_20251028_151207.json
+│   │   │   │   ├── predictions_230_20251028_152007.json
+│   │   │   │   ├── predictions_230_20251028_154752.json
+│   │   │   │   ├── predictions_230_20251028_161627.json
+│   │   │   │   ├── predictions_230_20251028_162339.json
+│   │   │   │   ├── predictions_230_20251028_164337.json
+│   │   │   │   ├── predictions_230_20251028_170855.json
+│   │   │   │   ├── predictions_236_20251028_130545.json
+│   │   │   │   ├── predictions_236_20251028_151208.json
+│   │   │   │   ├── predictions_236_20251028_152009.json
+│   │   │   │   ├── predictions_236_20251028_154753.json
+│   │   │   │   ├── predictions_236_20251028_161628.json
+│   │   │   │   ├── predictions_236_20251028_162340.json
+│   │   │   │   ├── predictions_236_20251028_164338.json
+│   │   │   │   ├── predictions_236_20251028_170856.json
+│   │   │   │   ├── predictions_238_20251028_130547.json
+│   │   │   │   ├── predictions_238_20251028_151209.json
+│   │   │   │   ├── predictions_238_20251028_152010.json
+│   │   │   │   ├── predictions_238_20251028_154754.json
+│   │   │   │   ├── predictions_238_20251028_161630.json
+│   │   │   │   ├── predictions_238_20251028_162341.json
+│   │   │   │   ├── predictions_238_20251028_164340.json
+│   │   │   │   ├── predictions_238_20251028_170857.json
+│   │   │   │   ├── predictions_24_20251028_130052.json
+│   │   │   │   ├── predictions_24_20251028_151318.json
+│   │   │   │   ├── predictions_24_20251028_154202.json
+│   │   │   │   ├── predictions_24_20251028_160837.json
+│   │   │   │   ├── predictions_24_20251028_160957.json
+│   │   │   │   ├── predictions_24_20251028_161850.json
+│   │   │   │   ├── predictions_24_20251028_163848.json
+│   │   │   │   ├── predictions_24_20251028_170305.json
+│   │   │   │   ├── predictions_240_20251028_130548.json
+│   │   │   │   ├── predictions_240_20251028_151210.json
+│   │   │   │   ├── predictions_240_20251028_152011.json
+│   │   │   │   ├── predictions_240_20251028_154755.json
+│   │   │   │   ├── predictions_240_20251028_161631.json
+│   │   │   │   ├── predictions_240_20251028_162342.json
+│   │   │   │   ├── predictions_240_20251028_164341.json
+│   │   │   │   ├── predictions_240_20251028_170859.json
+│   │   │   │   ├── predictions_245_20251028_130649.json
+│   │   │   │   ├── predictions_245_20251028_151312.json
+│   │   │   │   ├── predictions_245_20251028_152012.json
+│   │   │   │   ├── predictions_245_20251028_154756.json
+│   │   │   │   ├── predictions_245_20251028_161632.json
+│   │   │   │   ├── predictions_245_20251028_162343.json
+│   │   │   │   ├── predictions_245_20251028_164342.json
+│   │   │   │   ├── predictions_245_20251028_170900.json
+│   │   │   │   ├── predictions_26_20251028_130053.json
+│   │   │   │   ├── predictions_26_20251028_151319.json
+│   │   │   │   ├── predictions_26_20251028_154203.json
+│   │   │   │   ├── predictions_26_20251028_160838.json
+│   │   │   │   ├── predictions_26_20251028_160959.json
+│   │   │   │   ├── predictions_26_20251028_161852.json
+│   │   │   │   ├── predictions_26_20251028_163849.json
+│   │   │   │   ├── predictions_26_20251028_170306.json
+│   │   │   │   ├── predictions_28_20251028_130054.json
+│   │   │   │   ├── predictions_28_20251028_151321.json
+│   │   │   │   ├── predictions_28_20251028_154204.json
+│   │   │   │   ├── predictions_28_20251028_160839.json
+│   │   │   │   ├── predictions_28_20251028_161000.json
+│   │   │   │   ├── predictions_28_20251028_161853.json
+│   │   │   │   ├── predictions_28_20251028_163850.json
+│   │   │   │   ├── predictions_28_20251028_170308.json
+│   │   │   │   ├── predictions_29_20251028_130055.json
+│   │   │   │   ├── predictions_29_20251028_151322.json
+│   │   │   │   ├── predictions_29_20251028_154205.json
+│   │   │   │   ├── predictions_29_20251028_160840.json
+│   │   │   │   ├── predictions_29_20251028_161001.json
+│   │   │   │   ├── predictions_29_20251028_161854.json
+│   │   │   │   ├── predictions_29_20251028_163851.json
+│   │   │   │   ├── predictions_29_20251028_170309.json
+│   │   │   │   ├── predictions_30_20251028_130056.json
+│   │   │   │   ├── predictions_30_20251028_151323.json
+│   │   │   │   ├── predictions_30_20251028_154206.json
+│   │   │   │   ├── predictions_30_20251028_160842.json
+│   │   │   │   ├── predictions_30_20251028_161002.json
+│   │   │   │   ├── predictions_30_20251028_161855.json
+│   │   │   │   ├── predictions_30_20251028_163852.json
+│   │   │   │   ├── predictions_30_20251028_170310.json
+│   │   │   │   ├── predictions_31_20251028_130058.json
+│   │   │   │   ├── predictions_31_20251028_151424.json
+│   │   │   │   ├── predictions_31_20251028_154208.json
+│   │   │   │   ├── predictions_31_20251028_160843.json
+│   │   │   │   ├── predictions_31_20251028_161004.json
+│   │   │   │   ├── predictions_31_20251028_161856.json
+│   │   │   │   ├── predictions_31_20251028_163853.json
+│   │   │   │   ├── predictions_31_20251028_170311.json
+│   │   │   │   ├── predictions_32_20251028_130059.json
+│   │   │   │   ├── predictions_32_20251028_151426.json
+│   │   │   │   ├── predictions_32_20251028_154209.json
+│   │   │   │   ├── predictions_32_20251028_160844.json
+│   │   │   │   ├── predictions_32_20251028_161005.json
+│   │   │   │   ├── predictions_32_20251028_161857.json
+│   │   │   │   ├── predictions_32_20251028_163855.json
+│   │   │   │   ├── predictions_32_20251028_170313.json
+│   │   │   │   ├── predictions_33_20251028_130100.json
+│   │   │   │   ├── predictions_33_20251028_151427.json
+│   │   │   │   ├── predictions_33_20251028_154210.json
+│   │   │   │   ├── predictions_33_20251028_160845.json
+│   │   │   │   ├── predictions_33_20251028_161006.json
+│   │   │   │   ├── predictions_33_20251028_161858.json
+│   │   │   │   ├── predictions_33_20251028_163856.json
+│   │   │   │   ├── predictions_33_20251028_170314.json
+│   │   │   │   ├── predictions_34_20251028_130101.json
+│   │   │   │   ├── predictions_34_20251028_151428.json
+│   │   │   │   ├── predictions_34_20251028_154211.json
+│   │   │   │   ├── predictions_34_20251028_160847.json
+│   │   │   │   ├── predictions_34_20251028_161007.json
+│   │   │   │   ├── predictions_34_20251028_161900.json
+│   │   │   │   ├── predictions_34_20251028_163857.json
+│   │   │   │   ├── predictions_34_20251028_170315.json
+│   │   │   │   ├── predictions_34E_20251028_130102.json
+│   │   │   │   ├── predictions_34E_20251028_151429.json
+│   │   │   │   ├── predictions_34E_20251028_154212.json
+│   │   │   │   ├── predictions_34E_20251028_160948.json
+│   │   │   │   ├── predictions_34E_20251028_161008.json
+│   │   │   │   ├── predictions_34E_20251028_161901.json
+│   │   │   │   ├── predictions_34E_20251028_163858.json
+│   │   │   │   ├── predictions_34E_20251028_170316.json
+│   │   │   │   ├── predictions_35_20251028_130104.json
+│   │   │   │   ├── predictions_35_20251028_151430.json
+│   │   │   │   ├── predictions_35_20251028_154214.json
+│   │   │   │   ├── predictions_35_20251028_160949.json
+│   │   │   │   ├── predictions_35_20251028_161009.json
+│   │   │   │   ├── predictions_35_20251028_161902.json
+│   │   │   │   ├── predictions_35_20251028_163859.json
+│   │   │   │   ├── predictions_35_20251028_170317.json
+│   │   │   │   ├── predictions_350_20251028_130650.json
+│   │   │   │   ├── predictions_350_20251028_151313.json
+│   │   │   │   ├── predictions_350_20251028_152013.json
+│   │   │   │   ├── predictions_350_20251028_154758.json
+│   │   │   │   ├── predictions_350_20251028_161633.json
+│   │   │   │   ├── predictions_350_20251028_162345.json
+│   │   │   │   ├── predictions_350_20251028_164343.json
+│   │   │   │   ├── predictions_350_20251028_170901.json
+│   │   │   │   ├── predictions_351_20251028_130652.json
+│   │   │   │   ├── predictions_351_20251028_151314.json
+│   │   │   │   ├── predictions_351_20251028_152015.json
+│   │   │   │   ├── predictions_351_20251028_154759.json
+│   │   │   │   ├── predictions_351_20251028_161634.json
+│   │   │   │   ├── predictions_351_20251028_162346.json
+│   │   │   │   ├── predictions_351_20251028_164344.json
+│   │   │   │   ├── predictions_351_20251028_170902.json
+│   │   │   │   ├── predictions_354_20251028_130653.json
+│   │   │   │   ├── predictions_354_20251028_151315.json
+│   │   │   │   ├── predictions_354_20251028_152016.json
+│   │   │   │   ├── predictions_354_20251028_154800.json
+│   │   │   │   ├── predictions_354_20251028_161635.json
+│   │   │   │   ├── predictions_354_20251028_162447.json
+│   │   │   │   ├── predictions_354_20251028_164345.json
+│   │   │   │   ├── predictions_354_20251028_170903.json
+│   │   │   │   ├── predictions_36_20251028_130105.json
+│   │   │   │   ├── predictions_36_20251028_151432.json
+│   │   │   │   ├── predictions_36_20251028_154215.json
+│   │   │   │   ├── predictions_36_20251028_160950.json
+│   │   │   │   ├── predictions_36_20251028_161011.json
+│   │   │   │   ├── predictions_36_20251028_161903.json
+│   │   │   │   ├── predictions_36_20251028_163901.json
+│   │   │   │   ├── predictions_36_20251028_170318.json
+│   │   │   │   ├── predictions_37_20251028_130106.json
+│   │   │   │   ├── predictions_37_20251028_151433.json
+│   │   │   │   ├── predictions_37_20251028_154216.json
+│   │   │   │   ├── predictions_37_20251028_160951.json
+│   │   │   │   ├── predictions_37_20251028_161904.json
+│   │   │   │   ├── predictions_37_20251028_163902.json
+│   │   │   │   ├── predictions_37_20251028_170320.json
+│   │   │   │   ├── predictions_38_20251028_130107.json
+│   │   │   │   ├── predictions_38_20251028_151434.json
+│   │   │   │   ├── predictions_38_20251028_154217.json
+│   │   │   │   ├── predictions_38_20251028_160953.json
+│   │   │   │   ├── predictions_38_20251028_161906.json
+│   │   │   │   ├── predictions_38_20251028_163903.json
+│   │   │   │   ├── predictions_38_20251028_170321.json
+│   │   │   │   ├── predictions_39_20251028_130108.json
+│   │   │   │   ├── predictions_39_20251028_151536.json
+│   │   │   │   ├── predictions_39_20251028_154218.json
+│   │   │   │   ├── predictions_39_20251028_160954.json
+│   │   │   │   ├── predictions_39_20251028_161907.json
+│   │   │   │   ├── predictions_39_20251028_163904.json
+│   │   │   │   ├── predictions_39_20251028_170322.json
+│   │   │   │   ├── predictions_4_20251028_125933.json
+│   │   │   │   ├── predictions_4_20251028_151200.json
+│   │   │   │   ├── predictions_4_20251028_154043.json
+│   │   │   │   ├── predictions_4_20251028_160619.json
+│   │   │   │   ├── predictions_4_20251028_160839.json
+│   │   │   │   ├── predictions_4_20251028_161632.json
+│   │   │   │   ├── predictions_4_20251028_163729.json
+│   │   │   │   ├── predictions_4_20251028_170146.json
+│   │   │   │   ├── predictions_40_20251028_130110.json
+│   │   │   │   ├── predictions_40_20251028_151537.json
+│   │   │   │   ├── predictions_40_20251028_154220.json
+│   │   │   │   ├── predictions_40_20251028_160955.json
+│   │   │   │   ├── predictions_40_20251028_161908.json
+│   │   │   │   ├── predictions_40_20251028_163905.json
+│   │   │   │   ├── predictions_40_20251028_170323.json
+│   │   │   │   ├── predictions_41_20251028_130111.json
+│   │   │   │   ├── predictions_41_20251028_151538.json
+│   │   │   │   ├── predictions_41_20251028_154221.json
+│   │   │   │   ├── predictions_41_20251028_160956.json
+│   │   │   │   ├── predictions_41_20251028_161909.json
+│   │   │   │   ├── predictions_41_20251028_163907.json
+│   │   │   │   ├── predictions_41_20251028_170425.json
+│   │   │   │   ├── predictions_411_20251028_130654.json
+│   │   │   │   ├── predictions_411_20251028_151316.json
+│   │   │   │   ├── predictions_411_20251028_152017.json
+│   │   │   │   ├── predictions_411_20251028_154801.json
+│   │   │   │   ├── predictions_411_20251028_161737.json
+│   │   │   │   ├── predictions_411_20251028_162448.json
+│   │   │   │   ├── predictions_411_20251028_164347.json
+│   │   │   │   ├── predictions_411_20251028_170905.json
+│   │   │   │   ├── predictions_42_20251028_130112.json
+│   │   │   │   ├── predictions_42_20251028_151539.json
+│   │   │   │   ├── predictions_42_20251028_154222.json
+│   │   │   │   ├── predictions_42_20251028_160957.json
+│   │   │   │   ├── predictions_42_20251028_161910.json
+│   │   │   │   ├── predictions_42_20251028_163908.json
+│   │   │   │   ├── predictions_42_20251028_170426.json
+│   │   │   │   ├── predictions_424_20251028_130655.json
+│   │   │   │   ├── predictions_424_20251028_151317.json
+│   │   │   │   ├── predictions_424_20251028_152018.json
+│   │   │   │   ├── predictions_424_20251028_154802.json
+│   │   │   │   ├── predictions_424_20251028_161738.json
+│   │   │   │   ├── predictions_424_20251028_162450.json
+│   │   │   │   ├── predictions_424_20251028_164448.json
+│   │   │   │   ├── predictions_424_20251028_170906.json
+│   │   │   │   ├── predictions_426_20251028_130656.json
+│   │   │   │   ├── predictions_426_20251028_151318.json
+│   │   │   │   ├── predictions_426_20251028_152019.json
+│   │   │   │   ├── predictions_426_20251028_154803.json
+│   │   │   │   ├── predictions_426_20251028_161739.json
+│   │   │   │   ├── predictions_426_20251028_162451.json
+│   │   │   │   ├── predictions_426_20251028_164449.json
+│   │   │   │   ├── predictions_426_20251028_170907.json
+│   │   │   │   ├── predictions_428_20251028_130658.json
+│   │   │   │   ├── predictions_428_20251028_151320.json
+│   │   │   │   ├── predictions_428_20251028_152020.json
+│   │   │   │   ├── predictions_428_20251028_154805.json
+│   │   │   │   ├── predictions_428_20251028_161740.json
+│   │   │   │   ├── predictions_428_20251028_162452.json
+│   │   │   │   ├── predictions_428_20251028_164450.json
+│   │   │   │   ├── predictions_428_20251028_170908.json
+│   │   │   │   ├── predictions_429_20251028_130659.json
+│   │   │   │   ├── predictions_429_20251028_151321.json
+│   │   │   │   ├── predictions_429_20251028_152021.json
+│   │   │   │   ├── predictions_429_20251028_154806.json
+│   │   │   │   ├── predictions_429_20251028_161742.json
+│   │   │   │   ├── predictions_429_20251028_162453.json
+│   │   │   │   ├── predictions_429_20251028_164452.json
+│   │   │   │   ├── predictions_429_20251028_170909.json
+│   │   │   │   ├── predictions_43_20251028_130113.json
+│   │   │   │   ├── predictions_43_20251028_151540.json
+│   │   │   │   ├── predictions_43_20251028_154223.json
+│   │   │   │   ├── predictions_43_20251028_160959.json
+│   │   │   │   ├── predictions_43_20251028_161911.json
+│   │   │   │   ├── predictions_43_20251028_163909.json
+│   │   │   │   ├── predictions_43_20251028_170427.json
+│   │   │   │   ├── predictions_430_20251028_130700.json
+│   │   │   │   ├── predictions_430_20251028_151322.json
+│   │   │   │   ├── predictions_430_20251028_152023.json
+│   │   │   │   ├── predictions_430_20251028_154807.json
+│   │   │   │   ├── predictions_430_20251028_161743.json
+│   │   │   │   ├── predictions_430_20251028_162454.json
+│   │   │   │   ├── predictions_430_20251028_164453.json
+│   │   │   │   ├── predictions_430_20251028_170910.json
+│   │   │   │   ├── predictions_435_20251028_130701.json
+│   │   │   │   ├── predictions_435_20251028_151423.json
+│   │   │   │   ├── predictions_435_20251028_152124.json
+│   │   │   │   ├── predictions_435_20251028_154808.json
+│   │   │   │   ├── predictions_435_20251028_161744.json
+│   │   │   │   ├── predictions_435_20251028_162455.json
+│   │   │   │   ├── predictions_435_20251028_164454.json
+│   │   │   │   ├── predictions_435_20251028_170912.json
+│   │   │   │   ├── predictions_436_20251028_130703.json
+│   │   │   │   ├── predictions_436_20251028_151425.json
+│   │   │   │   ├── predictions_436_20251028_152125.json
+│   │   │   │   ├── predictions_436_20251028_154809.json
+│   │   │   │   ├── predictions_436_20251028_161745.json
+│   │   │   │   ├── predictions_436_20251028_162457.json
+│   │   │   │   ├── predictions_436_20251028_164455.json
+│   │   │   │   ├── predictions_436_20251028_170913.json
+│   │   │   │   ├── predictions_439_20251028_130704.json
+│   │   │   │   ├── predictions_439_20251028_151426.json
+│   │   │   │   ├── predictions_439_20251028_152126.json
+│   │   │   │   ├── predictions_439_20251028_154810.json
+│   │   │   │   ├── predictions_439_20251028_161746.json
+│   │   │   │   ├── predictions_439_20251028_162458.json
+│   │   │   │   ├── predictions_439_20251028_164456.json
+│   │   │   │   ├── predictions_439_20251028_170914.json
+│   │   │   │   ├── predictions_44_20251028_130114.json
+│   │   │   │   ├── predictions_44_20251028_151541.json
+│   │   │   │   ├── predictions_44_20251028_154325.json
+│   │   │   │   ├── predictions_44_20251028_161000.json
+│   │   │   │   ├── predictions_44_20251028_161913.json
+│   │   │   │   ├── predictions_44_20251028_163910.json
+│   │   │   │   ├── predictions_44_20251028_170428.json
+│   │   │   │   ├── predictions_441_20251028_130705.json
+│   │   │   │   ├── predictions_441_20251028_151427.json
+│   │   │   │   ├── predictions_441_20251028_152128.json
+│   │   │   │   ├── predictions_441_20251028_154812.json
+│   │   │   │   ├── predictions_441_20251028_161747.json
+│   │   │   │   ├── predictions_441_20251028_162459.json
+│   │   │   │   ├── predictions_441_20251028_164457.json
+│   │   │   │   ├── predictions_441_20251028_170915.json
+│   │   │   │   ├── predictions_442_20251028_130706.json
+│   │   │   │   ├── predictions_442_20251028_151428.json
+│   │   │   │   ├── predictions_442_20251028_152129.json
+│   │   │   │   ├── predictions_442_20251028_154813.json
+│   │   │   │   ├── predictions_442_20251028_161849.json
+│   │   │   │   ├── predictions_442_20251028_162500.json
+│   │   │   │   ├── predictions_442_20251028_164459.json
+│   │   │   │   ├── predictions_442_20251028_170916.json
+│   │   │   │   ├── predictions_45_20251028_130116.json
+│   │   │   │   ├── predictions_45_20251028_151543.json
+│   │   │   │   ├── predictions_45_20251028_154326.json
+│   │   │   │   ├── predictions_45_20251028_161001.json
+│   │   │   │   ├── predictions_45_20251028_162014.json
+│   │   │   │   ├── predictions_45_20251028_163911.json
+│   │   │   │   ├── predictions_45_20251028_170430.json
+│   │   │   │   ├── predictions_450_20251028_130708.json
+│   │   │   │   ├── predictions_450_20251028_151429.json
+│   │   │   │   ├── predictions_450_20251028_152130.json
+│   │   │   │   ├── predictions_450_20251028_154814.json
+│   │   │   │   ├── predictions_450_20251028_161850.json
+│   │   │   │   ├── predictions_450_20251028_162501.json
+│   │   │   │   ├── predictions_450_20251028_164500.json
+│   │   │   │   ├── predictions_450_20251028_170918.json
+│   │   │   │   ├── predictions_451_20251028_130709.json
+│   │   │   │   ├── predictions_451_20251028_151430.json
+│   │   │   │   ├── predictions_451_20251028_152131.json
+│   │   │   │   ├── predictions_451_20251028_154815.json
+│   │   │   │   ├── predictions_451_20251028_161851.json
+│   │   │   │   ├── predictions_451_20251028_162502.json
+│   │   │   │   ├── predictions_451_20251028_164501.json
+│   │   │   │   ├── predictions_451_20251028_170919.json
+│   │   │   │   ├── predictions_455_20251028_130710.json
+│   │   │   │   ├── predictions_455_20251028_151432.json
+│   │   │   │   ├── predictions_455_20251028_152132.json
+│   │   │   │   ├── predictions_455_20251028_154816.json
+│   │   │   │   ├── predictions_455_20251028_161852.json
+│   │   │   │   ├── predictions_455_20251028_162504.json
+│   │   │   │   ├── predictions_455_20251028_164502.json
+│   │   │   │   ├── predictions_455_20251028_170920.json
+│   │   │   │   ├── predictions_456_20251028_130711.json
+│   │   │   │   ├── predictions_456_20251028_151433.json
+│   │   │   │   ├── predictions_456_20251028_152134.json
+│   │   │   │   ├── predictions_456_20251028_154818.json
+│   │   │   │   ├── predictions_456_20251028_161853.json
+│   │   │   │   ├── predictions_456_20251028_162505.json
+│   │   │   │   ├── predictions_456_20251028_164503.json
+│   │   │   │   ├── predictions_456_20251028_170921.json
+│   │   │   │   ├── predictions_47_20251028_130117.json
+│   │   │   │   ├── predictions_47_20251028_151544.json
+│   │   │   │   ├── predictions_47_20251028_154327.json
+│   │   │   │   ├── predictions_47_20251028_161002.json
+│   │   │   │   ├── predictions_47_20251028_162015.json
+│   │   │   │   ├── predictions_47_20251028_163912.json
+│   │   │   │   ├── predictions_47_20251028_170431.json
+│   │   │   │   ├── predictions_50_20251028_130118.json
+│   │   │   │   ├── predictions_50_20251028_151545.json
+│   │   │   │   ├── predictions_50_20251028_154328.json
+│   │   │   │   ├── predictions_50_20251028_161003.json
+│   │   │   │   ├── predictions_50_20251028_162016.json
+│   │   │   │   ├── predictions_50_20251028_163914.json
+│   │   │   │   ├── predictions_50_20251028_170432.json
+│   │   │   │   ├── predictions_501_20251028_130712.json
+│   │   │   │   ├── predictions_501_20251028_151434.json
+│   │   │   │   ├── predictions_501_20251028_152135.json
+│   │   │   │   ├── predictions_501_20251028_154819.json
+│   │   │   │   ├── predictions_501_20251028_161855.json
+│   │   │   │   ├── predictions_501_20251028_162506.json
+│   │   │   │   ├── predictions_501_20251028_164504.json
+│   │   │   │   ├── predictions_501_20251028_170922.json
+│   │   │   │   ├── predictions_504_20251028_130714.json
+│   │   │   │   ├── predictions_504_20251028_151435.json
+│   │   │   │   ├── predictions_504_20251028_152136.json
+│   │   │   │   ├── predictions_504_20251028_154820.json
+│   │   │   │   ├── predictions_504_20251028_161856.json
+│   │   │   │   ├── predictions_504_20251028_162507.json
+│   │   │   │   ├── predictions_504_20251028_164506.json
+│   │   │   │   ├── predictions_504_20251028_171024.json
+│   │   │   │   ├── predictions_505_20251028_130715.json
+│   │   │   │   ├── predictions_505_20251028_151537.json
+│   │   │   │   ├── predictions_505_20251028_152137.json
+│   │   │   │   ├── predictions_505_20251028_154821.json
+│   │   │   │   ├── predictions_505_20251028_161857.json
+│   │   │   │   ├── predictions_505_20251028_162508.json
+│   │   │   │   ├── predictions_505_20251028_164507.json
+│   │   │   │   ├── predictions_505_20251028_171025.json
+│   │   │   │   ├── predictions_51_20251028_130119.json
+│   │   │   │   ├── predictions_51_20251028_151546.json
+│   │   │   │   ├── predictions_51_20251028_154329.json
+│   │   │   │   ├── predictions_51_20251028_161004.json
+│   │   │   │   ├── predictions_51_20251028_162018.json
+│   │   │   │   ├── predictions_51_20251028_163915.json
+│   │   │   │   ├── predictions_51_20251028_170433.json
+│   │   │   │   ├── predictions_52_20251028_130120.json
+│   │   │   │   ├── predictions_52_20251028_151647.json
+│   │   │   │   ├── predictions_52_20251028_154330.json
+│   │   │   │   ├── predictions_52_20251028_161005.json
+│   │   │   │   ├── predictions_52_20251028_162019.json
+│   │   │   │   ├── predictions_52_20251028_163916.json
+│   │   │   │   ├── predictions_52_20251028_170434.json
+│   │   │   │   ├── predictions_55_20251028_130122.json
+│   │   │   │   ├── predictions_55_20251028_151649.json
+│   │   │   │   ├── predictions_55_20251028_154332.json
+│   │   │   │   ├── predictions_55_20251028_161007.json
+│   │   │   │   ├── predictions_55_20251028_162020.json
+│   │   │   │   ├── predictions_55_20251028_163917.json
+│   │   │   │   ├── predictions_55_20251028_170435.json
+│   │   │   │   ├── predictions_553_20251028_130716.json
+│   │   │   │   ├── predictions_553_20251028_151538.json
+│   │   │   │   ├── predictions_553_20251028_152138.json
+│   │   │   │   ├── predictions_553_20251028_154822.json
+│   │   │   │   ├── predictions_553_20251028_161858.json
+│   │   │   │   ├── predictions_553_20251028_162509.json
+│   │   │   │   ├── predictions_553_20251028_164508.json
+│   │   │   │   ├── predictions_553_20251028_171026.json
+│   │   │   │   ├── predictions_554_20251028_130717.json
+│   │   │   │   ├── predictions_554_20251028_151539.json
+│   │   │   │   ├── predictions_554_20251028_152139.json
+│   │   │   │   ├── predictions_554_20251028_154924.json
+│   │   │   │   ├── predictions_554_20251028_161859.json
+│   │   │   │   ├── predictions_554_20251028_162511.json
+│   │   │   │   ├── predictions_554_20251028_164509.json
+│   │   │   │   ├── predictions_554_20251028_171027.json
+│   │   │   │   ├── predictions_556_20251028_130718.json
+│   │   │   │   ├── predictions_556_20251028_151540.json
+│   │   │   │   ├── predictions_556_20251028_152140.json
+│   │   │   │   ├── predictions_556_20251028_154925.json
+│   │   │   │   ├── predictions_556_20251028_161900.json
+│   │   │   │   ├── predictions_556_20251028_162512.json
+│   │   │   │   ├── predictions_556_20251028_164510.json
+│   │   │   │   ├── predictions_556_20251028_171029.json
+│   │   │   │   ├── predictions_558_20251028_130719.json
+│   │   │   │   ├── predictions_558_20251028_151541.json
+│   │   │   │   ├── predictions_558_20251028_152142.json
+│   │   │   │   ├── predictions_558_20251028_154926.json
+│   │   │   │   ├── predictions_558_20251028_161902.json
+│   │   │   │   ├── predictions_558_20251028_162513.json
+│   │   │   │   ├── predictions_558_20251028_164511.json
+│   │   │   │   ├── predictions_558_20251028_171030.json
+│   │   │   │   ├── predictions_57_20251028_130123.json
+│   │   │   │   ├── predictions_57_20251028_151650.json
+│   │   │   │   ├── predictions_57_20251028_154333.json
+│   │   │   │   ├── predictions_57_20251028_161008.json
+│   │   │   │   ├── predictions_57_20251028_162021.json
+│   │   │   │   ├── predictions_57_20251028_163918.json
+│   │   │   │   ├── predictions_57_20251028_170437.json
+│   │   │   │   ├── predictions_59_20251028_130224.json
+│   │   │   │   ├── predictions_59_20251028_151651.json
+│   │   │   │   ├── predictions_59_20251028_154334.json
+│   │   │   │   ├── predictions_59_20251028_161009.json
+│   │   │   │   ├── predictions_59_20251028_162022.json
+│   │   │   │   ├── predictions_59_20251028_163920.json
+│   │   │   │   ├── predictions_59_20251028_170438.json
+│   │   │   │   ├── predictions_60_20251028_130225.json
+│   │   │   │   ├── predictions_60_20251028_151652.json
+│   │   │   │   ├── predictions_60_20251028_154335.json
+│   │   │   │   ├── predictions_60_20251028_161010.json
+│   │   │   │   ├── predictions_60_20251028_162023.json
+│   │   │   │   ├── predictions_60_20251028_163921.json
+│   │   │   │   ├── predictions_60_20251028_170439.json
+│   │   │   │   ├── predictions_61_20251028_130227.json
+│   │   │   │   ├── predictions_61_20251028_151653.json
+│   │   │   │   ├── predictions_61_20251028_154336.json
+│   │   │   │   ├── predictions_61_20251028_161112.json
+│   │   │   │   ├── predictions_61_20251028_162025.json
+│   │   │   │   ├── predictions_61_20251028_163922.json
+│   │   │   │   ├── predictions_61_20251028_170440.json
+│   │   │   │   ├── predictions_62_20251028_130228.json
+│   │   │   │   ├── predictions_62_20251028_151654.json
+│   │   │   │   ├── predictions_62_20251028_154337.json
+│   │   │   │   ├── predictions_62_20251028_161113.json
+│   │   │   │   ├── predictions_62_20251028_162026.json
+│   │   │   │   ├── predictions_62_20251028_163923.json
+│   │   │   │   ├── predictions_62_20251028_170441.json
+│   │   │   │   ├── predictions_64_20251028_130229.json
+│   │   │   │   ├── predictions_64_20251028_151656.json
+│   │   │   │   ├── predictions_64_20251028_154339.json
+│   │   │   │   ├── predictions_64_20251028_161114.json
+│   │   │   │   ├── predictions_64_20251028_162027.json
+│   │   │   │   ├── predictions_64_20251028_164025.json
+│   │   │   │   ├── predictions_64_20251028_170442.json
+│   │   │   │   ├── predictions_65_20251028_130230.json
+│   │   │   │   ├── predictions_65_20251028_151657.json
+│   │   │   │   ├── predictions_65_20251028_154340.json
+│   │   │   │   ├── predictions_65_20251028_161115.json
+│   │   │   │   ├── predictions_65_20251028_162028.json
+│   │   │   │   ├── predictions_65_20251028_164026.json
+│   │   │   │   ├── predictions_65_20251028_170444.json
+│   │   │   │   ├── predictions_66_20251028_130231.json
+│   │   │   │   ├── predictions_66_20251028_151658.json
+│   │   │   │   ├── predictions_66_20251028_154341.json
+│   │   │   │   ├── predictions_66_20251028_161116.json
+│   │   │   │   ├── predictions_66_20251028_162029.json
+│   │   │   │   ├── predictions_66_20251028_164027.json
+│   │   │   │   ├── predictions_66_20251028_170445.json
+│   │   │   │   ├── predictions_67_20251028_130233.json
+│   │   │   │   ├── predictions_67_20251028_151659.json
+│   │   │   │   ├── predictions_67_20251028_154342.json
+│   │   │   │   ├── predictions_67_20251028_161118.json
+│   │   │   │   ├── predictions_67_20251028_162030.json
+│   │   │   │   ├── predictions_67_20251028_164028.json
+│   │   │   │   ├── predictions_67_20251028_170446.json
+│   │   │   │   ├── predictions_68_20251028_130234.json
+│   │   │   │   ├── predictions_68_20251028_151700.json
+│   │   │   │   ├── predictions_68_20251028_154343.json
+│   │   │   │   ├── predictions_68_20251028_161119.json
+│   │   │   │   ├── predictions_68_20251028_162032.json
+│   │   │   │   ├── predictions_68_20251028_164029.json
+│   │   │   │   ├── predictions_68_20251028_170447.json
+│   │   │   │   ├── predictions_69_20251028_130235.json
+│   │   │   │   ├── predictions_69_20251028_151701.json
+│   │   │   │   ├── predictions_69_20251028_154345.json
+│   │   │   │   ├── predictions_69_20251028_161120.json
+│   │   │   │   ├── predictions_69_20251028_162033.json
+│   │   │   │   ├── predictions_69_20251028_164031.json
+│   │   │   │   ├── predictions_69_20251028_170549.json
+│   │   │   │   ├── predictions_7_20251028_125934.json
+│   │   │   │   ├── predictions_7_20251028_151202.json
+│   │   │   │   ├── predictions_7_20251028_154044.json
+│   │   │   │   ├── predictions_7_20251028_160620.json
+│   │   │   │   ├── predictions_7_20251028_160840.json
+│   │   │   │   ├── predictions_7_20251028_161633.json
+│   │   │   │   ├── predictions_7_20251028_163731.json
+│   │   │   │   ├── predictions_7_20251028_170148.json
+│   │   │   │   ├── predictions_70_20251028_130236.json
+│   │   │   │   ├── predictions_70_20251028_151703.json
+│   │   │   │   ├── predictions_70_20251028_154346.json
+│   │   │   │   ├── predictions_70_20251028_161121.json
+│   │   │   │   ├── predictions_70_20251028_162034.json
+│   │   │   │   ├── predictions_70_20251028_164032.json
+│   │   │   │   ├── predictions_70_20251028_170550.json
+│   │   │   │   ├── predictions_708_20251028_125931.json
+│   │   │   │   ├── predictions_708_20251028_151158.json
+│   │   │   │   ├── predictions_708_20251028_154041.json
+│   │   │   │   ├── predictions_708_20251028_160616.json
+│   │   │   │   ├── predictions_708_20251028_160837.json
+│   │   │   │   ├── predictions_708_20251028_161630.json
+│   │   │   │   ├── predictions_708_20251028_163727.json
+│   │   │   │   ├── predictions_708_20251028_170144.json
+│   │   │   │   ├── predictions_71_20251028_130238.json
+│   │   │   │   ├── predictions_71_20251028_151704.json
+│   │   │   │   ├── predictions_71_20251028_154347.json
+│   │   │   │   ├── predictions_71_20251028_161122.json
+│   │   │   │   ├── predictions_71_20251028_162035.json
+│   │   │   │   ├── predictions_71_20251028_164033.json
+│   │   │   │   ├── predictions_71_20251028_170551.json
+│   │   │   │   ├── predictions_712_20251028_130721.json
+│   │   │   │   ├── predictions_712_20251028_151542.json
+│   │   │   │   ├── predictions_712_20251028_152143.json
+│   │   │   │   ├── predictions_712_20251028_154927.json
+│   │   │   │   ├── predictions_712_20251028_161903.json
+│   │   │   │   ├── predictions_712_20251028_162514.json
+│   │   │   │   ├── predictions_712_20251028_164513.json
+│   │   │   │   ├── predictions_712_20251028_171031.json
+│   │   │   │   ├── predictions_713_20251028_130722.json
+│   │   │   │   ├── predictions_713_20251028_151544.json
+│   │   │   │   ├── predictions_713_20251028_152144.json
+│   │   │   │   ├── predictions_713_20251028_154929.json
+│   │   │   │   ├── predictions_713_20251028_161904.json
+│   │   │   │   ├── predictions_713_20251028_162515.json
+│   │   │   │   ├── predictions_713_20251028_164514.json
+│   │   │   │   ├── predictions_713_20251028_171032.json
+│   │   │   │   ├── predictions_714_20251028_130723.json
+│   │   │   │   ├── predictions_714_20251028_151545.json
+│   │   │   │   ├── predictions_714_20251028_152145.json
+│   │   │   │   ├── predictions_714_20251028_154930.json
+│   │   │   │   ├── predictions_714_20251028_161905.json
+│   │   │   │   ├── predictions_714_20251028_162517.json
+│   │   │   │   ├── predictions_714_20251028_164515.json
+│   │   │   │   ├── predictions_714_20251028_171033.json
+│   │   │   │   ├── predictions_716_20251028_130824.json
+│   │   │   │   ├── predictions_716_20251028_151546.json
+│   │   │   │   ├── predictions_716_20251028_152146.json
+│   │   │   │   ├── predictions_716_20251028_154931.json
+│   │   │   │   ├── predictions_716_20251028_161906.json
+│   │   │   │   ├── predictions_716_20251028_162518.json
+│   │   │   │   ├── predictions_716_20251028_164516.json
+│   │   │   │   ├── predictions_716_20251028_171034.json
+│   │   │   │   ├── predictions_73_20251028_130239.json
+│   │   │   │   ├── predictions_73_20251028_151705.json
+│   │   │   │   ├── predictions_73_20251028_154449.json
+│   │   │   │   ├── predictions_73_20251028_161124.json
+│   │   │   │   ├── predictions_73_20251028_162036.json
+│   │   │   │   ├── predictions_73_20251028_164034.json
+│   │   │   │   ├── predictions_73_20251028_170552.json
+│   │   │   │   ├── predictions_74_20251028_130240.json
+│   │   │   │   ├── predictions_74_20251028_151706.json
+│   │   │   │   ├── predictions_74_20251028_154450.json
+│   │   │   │   ├── predictions_74_20251028_161125.json
+│   │   │   │   ├── predictions_74_20251028_162138.json
+│   │   │   │   ├── predictions_74_20251028_164035.json
+│   │   │   │   ├── predictions_74_20251028_170553.json
+│   │   │   │   ├── predictions_741_20251028_125800.json
+│   │   │   │   ├── predictions_741_20251028_153911.json
+│   │   │   │   ├── predictions_741_20251028_160345.json
+│   │   │   │   ├── predictions_741_20251028_160506.json
+│   │   │   │   ├── predictions_741_20251028_161359.json
+│   │   │   │   ├── predictions_741_20251028_163556.json
+│   │   │   │   ├── predictions_741_20251028_170013.json
+│   │   │   │   ├── predictions_742_20251028_125801.json
+│   │   │   │   ├── predictions_742_20251028_153912.json
+│   │   │   │   ├── predictions_742_20251028_160447.json
+│   │   │   │   ├── predictions_742_20251028_160507.json
+│   │   │   │   ├── predictions_742_20251028_161400.json
+│   │   │   │   ├── predictions_742_20251028_163558.json
+│   │   │   │   ├── predictions_742_20251028_170014.json
+│   │   │   │   ├── predictions_743_20251028_125802.json
+│   │   │   │   ├── predictions_743_20251028_153913.json
+│   │   │   │   ├── predictions_743_20251028_160448.json
+│   │   │   │   ├── predictions_743_20251028_160508.json
+│   │   │   │   ├── predictions_743_20251028_161401.json
+│   │   │   │   ├── predictions_743_20251028_163559.json
+│   │   │   │   ├── predictions_743_20251028_170015.json
+│   │   │   │   ├── predictions_746_20251028_125806.json
+│   │   │   │   ├── predictions_746_20251028_153916.json
+│   │   │   │   ├── predictions_746_20251028_160452.json
+│   │   │   │   ├── predictions_746_20251028_160612.json
+│   │   │   │   ├── predictions_746_20251028_161405.json
+│   │   │   │   ├── predictions_746_20251028_163602.json
+│   │   │   │   ├── predictions_746_20251028_170019.json
+│   │   │   │   ├── predictions_747_20251028_125929.json
+│   │   │   │   ├── predictions_747_20251028_151157.json
+│   │   │   │   ├── predictions_747_20251028_154040.json
+│   │   │   │   ├── predictions_747_20251028_160615.json
+│   │   │   │   ├── predictions_747_20251028_160836.json
+│   │   │   │   ├── predictions_747_20251028_161629.json
+│   │   │   │   ├── predictions_747_20251028_163726.json
+│   │   │   │   ├── predictions_747_20251028_170143.json
+│   │   │   │   ├── predictions_749_20251028_125804.json
+│   │   │   │   ├── predictions_749_20251028_153915.json
+│   │   │   │   ├── predictions_749_20251028_160450.json
+│   │   │   │   ├── predictions_749_20251028_160511.json
+│   │   │   │   ├── predictions_749_20251028_161404.json
+│   │   │   │   ├── predictions_749_20251028_163601.json
+│   │   │   │   ├── predictions_749_20251028_170018.json
+│   │   │   │   ├── predictions_75_20251028_130241.json
+│   │   │   │   ├── predictions_75_20251028_151707.json
+│   │   │   │   ├── predictions_75_20251028_154451.json
+│   │   │   │   ├── predictions_75_20251028_161126.json
+│   │   │   │   ├── predictions_75_20251028_162139.json
+│   │   │   │   ├── predictions_75_20251028_164037.json
+│   │   │   │   ├── predictions_75_20251028_170555.json
+│   │   │   │   ├── predictions_751_20251028_125803.json
+│   │   │   │   ├── predictions_751_20251028_153914.json
+│   │   │   │   ├── predictions_751_20251028_160449.json
+│   │   │   │   ├── predictions_751_20251028_160510.json
+│   │   │   │   ├── predictions_751_20251028_161402.json
+│   │   │   │   ├── predictions_751_20251028_163600.json
+│   │   │   │   ├── predictions_751_20251028_170017.json
+│   │   │   │   ├── predictions_76_20251028_130242.json
+│   │   │   │   ├── predictions_76_20251028_151708.json
+│   │   │   │   ├── predictions_76_20251028_154452.json
+│   │   │   │   ├── predictions_76_20251028_161127.json
+│   │   │   │   ├── predictions_76_20251028_162140.json
+│   │   │   │   ├── predictions_76_20251028_164038.json
+│   │   │   │   ├── predictions_76_20251028_170556.json
+│   │   │   │   ├── predictions_77_20251028_130244.json
+│   │   │   │   ├── predictions_77_20251028_151710.json
+│   │   │   │   ├── predictions_77_20251028_154453.json
+│   │   │   │   ├── predictions_77_20251028_161128.json
+│   │   │   │   ├── predictions_77_20251028_162141.json
+│   │   │   │   ├── predictions_77_20251028_164039.json
+│   │   │   │   ├── predictions_77_20251028_170557.json
+│   │   │   │   ├── predictions_78_20251028_130245.json
+│   │   │   │   ├── predictions_78_20251028_151711.json
+│   │   │   │   ├── predictions_78_20251028_154454.json
+│   │   │   │   ├── predictions_78_20251028_161129.json
+│   │   │   │   ├── predictions_78_20251028_162142.json
+│   │   │   │   ├── predictions_78_20251028_164040.json
+│   │   │   │   ├── predictions_78_20251028_170558.json
+│   │   │   │   ├── predictions_8_20251028_125935.json
+│   │   │   │   ├── predictions_8_20251028_151203.json
+│   │   │   │   ├── predictions_8_20251028_154046.json
+│   │   │   │   ├── predictions_8_20251028_160621.json
+│   │   │   │   ├── predictions_8_20251028_160842.json
+│   │   │   │   ├── predictions_8_20251028_161635.json
+│   │   │   │   ├── predictions_8_20251028_163732.json
+│   │   │   │   ├── predictions_8_20251028_170249.json
+│   │   │   │   ├── predictions_80_20251028_130246.json
+│   │   │   │   ├── predictions_80_20251028_151712.json
+│   │   │   │   ├── predictions_80_20251028_154456.json
+│   │   │   │   ├── predictions_80_20251028_161131.json
+│   │   │   │   ├── predictions_80_20251028_162144.json
+│   │   │   │   ├── predictions_80_20251028_164041.json
+│   │   │   │   ├── predictions_80_20251028_170559.json
+│   │   │   │   ├── predictions_83_20251028_130248.json
+│   │   │   │   ├── predictions_83_20251028_151713.json
+│   │   │   │   ├── predictions_83_20251028_154457.json
+│   │   │   │   ├── predictions_83_20251028_161132.json
+│   │   │   │   ├── predictions_83_20251028_162145.json
+│   │   │   │   ├── predictions_83_20251028_164042.json
+│   │   │   │   ├── predictions_83_20251028_170600.json
+│   │   │   │   ├── predictions_85_20251028_130349.json
+│   │   │   │   ├── predictions_85_20251028_151714.json
+│   │   │   │   ├── predictions_85_20251028_154458.json
+│   │   │   │   ├── predictions_85_20251028_161133.json
+│   │   │   │   ├── predictions_85_20251028_162146.json
+│   │   │   │   ├── predictions_85_20251028_164043.json
+│   │   │   │   ├── predictions_85_20251028_170602.json
+│   │   │   │   ├── predictions_86_20251028_130351.json
+│   │   │   │   ├── predictions_86_20251028_151715.json
+│   │   │   │   ├── predictions_86_20251028_154459.json
+│   │   │   │   ├── predictions_86_20251028_161134.json
+│   │   │   │   ├── predictions_86_20251028_162147.json
+│   │   │   │   ├── predictions_86_20251028_164045.json
+│   │   │   │   ├── predictions_86_20251028_170603.json
+│   │   │   │   ├── predictions_87_20251028_130352.json
+│   │   │   │   ├── predictions_87_20251028_151717.json
+│   │   │   │   ├── predictions_87_20251028_154500.json
+│   │   │   │   ├── predictions_87_20251028_161236.json
+│   │   │   │   ├── predictions_87_20251028_162148.json
+│   │   │   │   ├── predictions_87_20251028_164046.json
+│   │   │   │   ├── predictions_87_20251028_170604.json
+│   │   │   │   ├── predictions_88_20251028_130353.json
+│   │   │   │   ├── predictions_88_20251028_151718.json
+│   │   │   │   ├── predictions_88_20251028_154501.json
+│   │   │   │   ├── predictions_88_20251028_161237.json
+│   │   │   │   ├── predictions_88_20251028_162149.json
+│   │   │   │   ├── predictions_88_20251028_164047.json
+│   │   │   │   ├── predictions_88_20251028_170605.json
+│   │   │   │   ├── predictions_89_20251028_130354.json
+│   │   │   │   ├── predictions_89_20251028_151719.json
+│   │   │   │   ├── predictions_89_20251028_154503.json
+│   │   │   │   ├── predictions_89_20251028_161238.json
+│   │   │   │   ├── predictions_89_20251028_162151.json
+│   │   │   │   ├── predictions_89_20251028_164148.json
+│   │   │   │   ├── predictions_89_20251028_170606.json
+│   │   │   │   ├── predictions_9_20251028_125937.json
+│   │   │   │   ├── predictions_9_20251028_151204.json
+│   │   │   │   ├── predictions_9_20251028_154047.json
+│   │   │   │   ├── predictions_9_20251028_160622.json
+│   │   │   │   ├── predictions_9_20251028_160843.json
+│   │   │   │   ├── predictions_9_20251028_161736.json
+│   │   │   │   ├── predictions_9_20251028_163733.json
+│   │   │   │   ├── predictions_9_20251028_170250.json
+│   │   │   │   ├── predictions_90_20251028_130356.json
+│   │   │   │   ├── predictions_90_20251028_151720.json
+│   │   │   │   ├── predictions_90_20251028_154504.json
+│   │   │   │   ├── predictions_90_20251028_161239.json
+│   │   │   │   ├── predictions_90_20251028_162152.json
+│   │   │   │   ├── predictions_90_20251028_164150.json
+│   │   │   │   ├── predictions_90_20251028_170607.json
+│   │   │   │   ├── predictions_91_20251028_130357.json
+│   │   │   │   ├── predictions_91_20251028_151721.json
+│   │   │   │   ├── predictions_91_20251028_154505.json
+│   │   │   │   ├── predictions_91_20251028_161240.json
+│   │   │   │   ├── predictions_91_20251028_162153.json
+│   │   │   │   ├── predictions_91_20251028_164151.json
+│   │   │   │   ├── predictions_91_20251028_170609.json
+│   │   │   │   ├── predictions_92_20251028_130358.json
+│   │   │   │   ├── predictions_92_20251028_151722.json
+│   │   │   │   ├── predictions_92_20251028_154506.json
+│   │   │   │   ├── predictions_92_20251028_161241.json
+│   │   │   │   ├── predictions_92_20251028_162154.json
+│   │   │   │   ├── predictions_92_20251028_164152.json
+│   │   │   │   ├── predictions_92_20251028_170610.json
+│   │   │   │   ├── predictions_93_20251028_130359.json
+│   │   │   │   ├── predictions_93_20251028_151824.json
+│   │   │   │   ├── predictions_93_20251028_154507.json
+│   │   │   │   ├── predictions_93_20251028_161243.json
+│   │   │   │   ├── predictions_93_20251028_162155.json
+│   │   │   │   ├── predictions_93_20251028_164153.json
+│   │   │   │   ├── predictions_93_20251028_170611.json
+│   │   │   │   ├── predictions_94_20251028_130401.json
+│   │   │   │   ├── predictions_94_20251028_151825.json
+│   │   │   │   ├── predictions_94_20251028_154508.json
+│   │   │   │   ├── predictions_94_20251028_161244.json
+│   │   │   │   ├── predictions_94_20251028_162156.json
+│   │   │   │   ├── predictions_94_20251028_164154.json
+│   │   │   │   ├── predictions_94_20251028_170612.json
+│   │   │   │   ├── predictions_95_20251028_130402.json
+│   │   │   │   ├── predictions_95_20251028_151826.json
+│   │   │   │   ├── predictions_95_20251028_154510.json
+│   │   │   │   ├── predictions_95_20251028_161245.json
+│   │   │   │   ├── predictions_95_20251028_162158.json
+│   │   │   │   ├── predictions_95_20251028_164155.json
+│   │   │   │   ├── predictions_95_20251028_170613.json
+│   │   │   │   ├── predictions_96_20251028_130403.json
+│   │   │   │   ├── predictions_96_20251028_151827.json
+│   │   │   │   ├── predictions_96_20251028_154511.json
+│   │   │   │   ├── predictions_96_20251028_161246.json
+│   │   │   │   ├── predictions_96_20251028_162159.json
+│   │   │   │   ├── predictions_96_20251028_164157.json
+│   │   │   │   ├── predictions_96_20251028_170615.json
+│   │   │   │   ├── predictions_97_20251028_130404.json
+│   │   │   │   ├── predictions_97_20251028_151828.json
+│   │   │   │   ├── predictions_97_20251028_154512.json
+│   │   │   │   ├── predictions_97_20251028_161247.json
+│   │   │   │   ├── predictions_97_20251028_162200.json
+│   │   │   │   ├── predictions_97_20251028_164158.json
+│   │   │   │   ├── predictions_97_20251028_170616.json
+│   │   │   │   ├── predictions_99_20251028_130405.json
+│   │   │   │   ├── predictions_99_20251028_151830.json
+│   │   │   │   ├── predictions_99_20251028_154513.json
+│   │   │   │   ├── predictions_99_20251028_161248.json
+│   │   │   │   ├── predictions_99_20251028_162201.json
+│   │   │   │   ├── predictions_99_20251028_164159.json
+│   │   │   │   ├── predictions_99_20251028_170617.json
+│   │   │   │   ├── predictions_Blue_20251028_125758.json
+│   │   │   │   ├── predictions_Blue_20251028_153909.json
+│   │   │   │   ├── predictions_Blue_20251028_160344.json
+│   │   │   │   ├── predictions_Blue_20251028_160505.json
+│   │   │   │   ├── predictions_Blue_20251028_161358.json
+│   │   │   │   ├── predictions_Blue_20251028_163555.json
+│   │   │   │   ├── predictions_Blue_20251028_170012.json
+│   │   │   │   ├── predictions_Boat-EastBoston_20251028_125925.json
+│   │   │   │   ├── predictions_Boat-EastBoston_20251028_154035.json
+│   │   │   │   ├── predictions_Boat-EastBoston_20251028_160510.json
+│   │   │   │   ├── predictions_Boat-EastBoston_20251028_160731.json
+│   │   │   │   ├── predictions_Boat-EastBoston_20251028_161624.json
+│   │   │   │   ├── predictions_Boat-EastBoston_20251028_163621.json
+│   │   │   │   ├── predictions_Boat-EastBoston_20251028_170138.json
+│   │   │   │   ├── predictions_Boat-F1_20251028_125923.json
+│   │   │   │   ├── predictions_Boat-F1_20251028_154034.json
+│   │   │   │   ├── predictions_Boat-F1_20251028_160509.json
+│   │   │   │   ├── predictions_Boat-F1_20251028_160730.json
+│   │   │   │   ├── predictions_Boat-F1_20251028_161523.json
+│   │   │   │   ├── predictions_Boat-F1_20251028_163620.json
+│   │   │   │   ├── predictions_Boat-F1_20251028_170137.json
+│   │   │   │   ├── predictions_Boat-F4_20251028_125822.json
+│   │   │   │   ├── predictions_Boat-F4_20251028_154033.json
+│   │   │   │   ├── predictions_Boat-F4_20251028_160508.json
+│   │   │   │   ├── predictions_Boat-F4_20251028_160729.json
+│   │   │   │   ├── predictions_Boat-F4_20251028_161521.json
+│   │   │   │   ├── predictions_Boat-F4_20251028_163618.json
+│   │   │   │   ├── predictions_Boat-F4_20251028_170136.json
+│   │   │   │   ├── predictions_Boat-F6_20251028_125927.json
+│   │   │   │   ├── predictions_Boat-F6_20251028_154038.json
+│   │   │   │   ├── predictions_Boat-F6_20251028_160613.json
+│   │   │   │   ├── predictions_Boat-F6_20251028_160733.json
+│   │   │   │   ├── predictions_Boat-F6_20251028_161626.json
+│   │   │   │   ├── predictions_Boat-F6_20251028_163723.json
+│   │   │   │   ├── predictions_Boat-F6_20251028_170141.json
+│   │   │   │   ├── predictions_Boat-F7_20251028_125928.json
+│   │   │   │   ├── predictions_Boat-F7_20251028_154039.json
+│   │   │   │   ├── predictions_Boat-F7_20251028_160614.json
+│   │   │   │   ├── predictions_Boat-F7_20251028_160734.json
+│   │   │   │   ├── predictions_Boat-F7_20251028_161627.json
+│   │   │   │   ├── predictions_Boat-F7_20251028_163725.json
+│   │   │   │   ├── predictions_Boat-F7_20251028_170142.json
+│   │   │   │   ├── predictions_Boat-Lynn_20251028_125926.json
+│   │   │   │   ├── predictions_Boat-Lynn_20251028_154036.json
+│   │   │   │   ├── predictions_Boat-Lynn_20251028_160612.json
+│   │   │   │   ├── predictions_Boat-Lynn_20251028_160732.json
+│   │   │   │   ├── predictions_Boat-Lynn_20251028_161625.json
+│   │   │   │   ├── predictions_Boat-Lynn_20251028_163622.json
+│   │   │   │   ├── predictions_Boat-Lynn_20251028_170139.json
+│   │   │   │   ├── predictions_CR-Fairmount_20251028_125807.json
+│   │   │   │   ├── predictions_CR-Fairmount_20251028_153917.json
+│   │   │   │   ├── predictions_CR-Fairmount_20251028_160453.json
+│   │   │   │   ├── predictions_CR-Fairmount_20251028_160613.json
+│   │   │   │   ├── predictions_CR-Fairmount_20251028_161406.json
+│   │   │   │   ├── predictions_CR-Fairmount_20251028_163603.json
+│   │   │   │   ├── predictions_CR-Fairmount_20251028_170020.json
+│   │   │   │   ├── predictions_CR-Fitchburg_20251028_125809.json
+│   │   │   │   ├── predictions_CR-Fitchburg_20251028_153920.json
+│   │   │   │   ├── predictions_CR-Fitchburg_20251028_160455.json
+│   │   │   │   ├── predictions_CR-Fitchburg_20251028_160616.json
+│   │   │   │   ├── predictions_CR-Fitchburg_20251028_161408.json
+│   │   │   │   ├── predictions_CR-Fitchburg_20251028_163606.json
+│   │   │   │   ├── predictions_CR-Fitchburg_20251028_170023.json
+│   │   │   │   ├── predictions_CR-Foxboro_20251028_125821.json
+│   │   │   │   ├── predictions_CR-Foxboro_20251028_154032.json
+│   │   │   │   ├── predictions_CR-Foxboro_20251028_160507.json
+│   │   │   │   ├── predictions_CR-Foxboro_20251028_160727.json
+│   │   │   │   ├── predictions_CR-Foxboro_20251028_161520.json
+│   │   │   │   ├── predictions_CR-Foxboro_20251028_163617.json
+│   │   │   │   ├── predictions_CR-Foxboro_20251028_170135.json
+│   │   │   │   ├── predictions_CR-Franklin_20251028_125811.json
+│   │   │   │   ├── predictions_CR-Franklin_20251028_153922.json
+│   │   │   │   ├── predictions_CR-Franklin_20251028_160457.json
+│   │   │   │   ├── predictions_CR-Franklin_20251028_160618.json
+│   │   │   │   ├── predictions_CR-Franklin_20251028_161411.json
+│   │   │   │   ├── predictions_CR-Franklin_20251028_163608.json
+│   │   │   │   ├── predictions_CR-Franklin_20251028_170125.json
+│   │   │   │   ├── predictions_CR-Greenbush_20251028_125813.json
+│   │   │   │   ├── predictions_CR-Greenbush_20251028_153923.json
+│   │   │   │   ├── predictions_CR-Greenbush_20251028_160459.json
+│   │   │   │   ├── predictions_CR-Greenbush_20251028_160619.json
+│   │   │   │   ├── predictions_CR-Greenbush_20251028_161512.json
+│   │   │   │   ├── predictions_CR-Greenbush_20251028_163609.json
+│   │   │   │   ├── predictions_CR-Greenbush_20251028_170126.json
+│   │   │   │   ├── predictions_CR-Haverhill_20251028_125814.json
+│   │   │   │   ├── predictions_CR-Haverhill_20251028_154025.json
+│   │   │   │   ├── predictions_CR-Haverhill_20251028_160500.json
+│   │   │   │   ├── predictions_CR-Haverhill_20251028_160620.json
+│   │   │   │   ├── predictions_CR-Haverhill_20251028_161513.json
+│   │   │   │   ├── predictions_CR-Haverhill_20251028_163610.json
+│   │   │   │   ├── predictions_CR-Haverhill_20251028_170128.json
+│   │   │   │   ├── predictions_CR-Kingston_20251028_125815.json
+│   │   │   │   ├── predictions_CR-Kingston_20251028_154026.json
+│   │   │   │   ├── predictions_CR-Kingston_20251028_160501.json
+│   │   │   │   ├── predictions_CR-Kingston_20251028_160621.json
+│   │   │   │   ├── predictions_CR-Kingston_20251028_161514.json
+│   │   │   │   ├── predictions_CR-Kingston_20251028_163611.json
+│   │   │   │   ├── predictions_CR-Kingston_20251028_170129.json
+│   │   │   │   ├── predictions_CR-Lowell_20251028_125816.json
+│   │   │   │   ├── predictions_CR-Lowell_20251028_154027.json
+│   │   │   │   ├── predictions_CR-Lowell_20251028_160502.json
+│   │   │   │   ├── predictions_CR-Lowell_20251028_160623.json
+│   │   │   │   ├── predictions_CR-Lowell_20251028_161516.json
+│   │   │   │   ├── predictions_CR-Lowell_20251028_163613.json
+│   │   │   │   ├── predictions_CR-Lowell_20251028_170130.json
+│   │   │   │   ├── predictions_CR-Needham_20251028_125817.json
+│   │   │   │   ├── predictions_CR-Needham_20251028_154028.json
+│   │   │   │   ├── predictions_CR-Needham_20251028_160503.json
+│   │   │   │   ├── predictions_CR-Needham_20251028_160724.json
+│   │   │   │   ├── predictions_CR-Needham_20251028_161517.json
+│   │   │   │   ├── predictions_CR-Needham_20251028_163614.json
+│   │   │   │   ├── predictions_CR-Needham_20251028_170131.json
+│   │   │   │   ├── predictions_CR-NewBedford_20251028_125808.json
+│   │   │   │   ├── predictions_CR-NewBedford_20251028_153919.json
+│   │   │   │   ├── predictions_CR-NewBedford_20251028_160454.json
+│   │   │   │   ├── predictions_CR-NewBedford_20251028_160614.json
+│   │   │   │   ├── predictions_CR-NewBedford_20251028_161407.json
+│   │   │   │   ├── predictions_CR-NewBedford_20251028_163604.json
+│   │   │   │   ├── predictions_CR-NewBedford_20251028_170021.json
+│   │   │   │   ├── predictions_CR-Newburyport_20251028_125818.json
+│   │   │   │   ├── predictions_CR-Newburyport_20251028_154029.json
+│   │   │   │   ├── predictions_CR-Newburyport_20251028_160504.json
+│   │   │   │   ├── predictions_CR-Newburyport_20251028_160725.json
+│   │   │   │   ├── predictions_CR-Newburyport_20251028_161518.json
+│   │   │   │   ├── predictions_CR-Newburyport_20251028_163615.json
+│   │   │   │   ├── predictions_CR-Newburyport_20251028_170132.json
+│   │   │   │   ├── predictions_CR-Providence_20251028_125820.json
+│   │   │   │   ├── predictions_CR-Providence_20251028_154031.json
+│   │   │   │   ├── predictions_CR-Providence_20251028_160506.json
+│   │   │   │   ├── predictions_CR-Providence_20251028_160726.json
+│   │   │   │   ├── predictions_CR-Providence_20251028_161519.json
+│   │   │   │   ├── predictions_CR-Providence_20251028_163616.json
+│   │   │   │   ├── predictions_CR-Providence_20251028_170134.json
+│   │   │   │   ├── predictions_CR-Worcester_20251028_125810.json
+│   │   │   │   ├── predictions_CR-Worcester_20251028_153921.json
+│   │   │   │   ├── predictions_CR-Worcester_20251028_160456.json
+│   │   │   │   ├── predictions_CR-Worcester_20251028_160617.json
+│   │   │   │   ├── predictions_CR-Worcester_20251028_161409.json
+│   │   │   │   ├── predictions_CR-Worcester_20251028_163607.json
+│   │   │   │   ├── predictions_CR-Worcester_20251028_170024.json
+│   │   │   │   ├── predictions_Green-B_20251028_125754.json
+│   │   │   │   ├── predictions_Green-B_20251028_153905.json
+│   │   │   │   ├── predictions_Green-B_20251028_160340.json
+│   │   │   │   ├── predictions_Green-B_20251028_160500.json
+│   │   │   │   ├── predictions_Green-B_20251028_161253.json
+│   │   │   │   ├── predictions_Green-B_20251028_163550.json
+│   │   │   │   ├── predictions_Green-B_20251028_170007.json
+│   │   │   │   ├── predictions_Green-C_20251028_125755.json
+│   │   │   │   ├── predictions_Green-C_20251028_153906.json
+│   │   │   │   ├── predictions_Green-C_20251028_160341.json
+│   │   │   │   ├── predictions_Green-C_20251028_160501.json
+│   │   │   │   ├── predictions_Green-C_20251028_161354.json
+│   │   │   │   ├── predictions_Green-C_20251028_163552.json
+│   │   │   │   ├── predictions_Green-C_20251028_170008.json
+│   │   │   │   ├── predictions_Green-D_20251028_125756.json
+│   │   │   │   ├── predictions_Green-D_20251028_153907.json
+│   │   │   │   ├── predictions_Green-D_20251028_160342.json
+│   │   │   │   ├── predictions_Green-D_20251028_160503.json
+│   │   │   │   ├── predictions_Green-D_20251028_161355.json
+│   │   │   │   ├── predictions_Green-D_20251028_163553.json
+│   │   │   │   ├── predictions_Green-D_20251028_170009.json
+│   │   │   │   ├── predictions_Green-E_20251028_125757.json
+│   │   │   │   ├── predictions_Green-E_20251028_153908.json
+│   │   │   │   ├── predictions_Green-E_20251028_160343.json
+│   │   │   │   ├── predictions_Green-E_20251028_160504.json
+│   │   │   │   ├── predictions_Green-E_20251028_161356.json
+│   │   │   │   ├── predictions_Green-E_20251028_163554.json
+│   │   │   │   ├── predictions_Green-E_20251028_170011.json
+│   │   │   │   ├── predictions_Mattapan_20251028_125751.json
+│   │   │   │   ├── predictions_Mattapan_20251028_153902.json
+│   │   │   │   ├── predictions_Mattapan_20251028_160337.json
+│   │   │   │   ├── predictions_Mattapan_20251028_160457.json
+│   │   │   │   ├── predictions_Mattapan_20251028_161250.json
+│   │   │   │   ├── predictions_Mattapan_20251028_163548.json
+│   │   │   │   ├── predictions_Mattapan_20251028_170004.json
+│   │   │   │   ├── predictions_Orange_20251028_125752.json
+│   │   │   │   ├── predictions_Orange_20251028_153903.json
+│   │   │   │   ├── predictions_Orange_20251028_160338.json
+│   │   │   │   ├── predictions_Orange_20251028_160339.json
+│   │   │   │   ├── predictions_Orange_20251028_160459.json
+│   │   │   │   ├── predictions_Orange_20251028_161251.json
+│   │   │   │   ├── predictions_Orange_20251028_163549.json
+│   │   │   │   ├── predictions_Orange_20251028_170006.json
+│   │   │   │   ├── predictions_Red_20251028_125750.json
+│   │   │   │   ├── predictions_Red_20251028_153901.json
+│   │   │   │   ├── predictions_Red_20251028_160336.json
+│   │   │   │   ├── predictions_Red_20251028_160456.json
+│   │   │   │   ├── predictions_Red_20251028_161249.json
+│   │   │   │   ├── predictions_Red_20251028_163547.json
+│   │   │   │   └── predictions_Red_20251028_170003.json
+│   │   │   └── vehicles
+│   │   │       ├── vehicles_20251028_130826.json
+│   │   │       ├── vehicles_20251028_151547.json
+│   │   │       ├── vehicles_20251028_152248.json
+│   │   │       ├── vehicles_20251028_154932.json
+│   │   │       ├── vehicles_20251028_161907.json
+│   │   │       ├── vehicles_20251028_162519.json
+│   │   │       ├── vehicles_20251028_164517.json
+│   │   │       └── vehicles_20251028_171036.json
+│   │   ├── routes_20251028_074926.json
+│   │   ├── routes_20251028_075031.json
+│   │   ├── routes_20251028_080734.json
+│   │   ├── routes_20251028_094614.json
+│   │   ├── routes_20251028_094617.json
+│   │   ├── routes_20251028_094928.json
+│   │   ├── routes_20251028_094948.json
+│   │   ├── routes_20251028_100001.json
+│   │   ├── routes_20251028_101451.json
+│   │   ├── routes_20251028_101527.json
+│   │   ├── routes_20251028_102651.json
+│   │   ├── routes_20251028_102922.json
+│   │   ├── routes_20251028_110002.json
+│   │   ├── routes_20251028_113859.json
+│   │   ├── routes_20251028_120334.json
+│   │   ├── routes_20251028_120455.json
+│   │   ├── routes_20251028_121247.json
+│   │   ├── routes_20251028_123545.json
+│   │   ├── routes_20251028_130001.json
+│   │   └── validation
+│   │       ├── anomaly_report.json
+│   │       ├── bias_report.csv
+│   │       ├── predictions_profiling.html
+│   │       ├── profiling_schema_report.json
+│   │       ├── schema_validation_report.json
+│   │       └── vehicles_profiling.html
+│   ├── logs
+│   │   ├── dag_id=data_collection_dag
+│   │   │   ├── run_id=manual__2025-10-28T17:57:45.651325+00:00
+│   │   │   │   └── task_id=fetch_all_routes
+│   │   │   │       └── attempt=1.log
+│   │   │   ├── run_id=manual__2025-10-28T18:02:10.971506+00:00
+│   │   │   │   └── task_id=fetch_all_routes
+│   │   │   │       ├── attempt=1.log
+│   │   │   │       └── attempt=2.log
+│   │   │   ├── run_id=manual__2025-10-28T18:28:03.734950+00:00
+│   │   │   │   ├── task_id=fetch_all_routes
+│   │   │   │   │   └── attempt=1.log
+│   │   │   │   └── task_id=fetch_data
+│   │   │   │       ├── attempt=1.log
+│   │   │   │       └── attempt=2.log
+│   │   │   ├── run_id=manual__2025-10-28T18:34:14.749019+00:00
+│   │   │   │   ├── task_id=fetch_all_routes
+│   │   │   │   │   └── attempt=1.log
+│   │   │   │   └── task_id=fetch_data
+│   │   │   │       ├── attempt=1.log
+│   │   │   │       └── attempt=2.log
+│   │   │   ├── run_id=manual__2025-10-28T18:40:46.924242+00:00
+│   │   │   │   ├── task_id=fetch_all_routes
+│   │   │   │   │   └── attempt=1.log
+│   │   │   │   ├── task_id=fetch_data
+│   │   │   │   │   └── attempt=1.log
+│   │   │   │   └── task_id=trigger_processing_dag
+│   │   │   │       └── attempt=1.log
+│   │   │   ├── run_id=manual__2025-10-28T19:19:23.577571+00:00
+│   │   │   │   └── task_id=fetch_all_routes
+│   │   │   │       ├── attempt=1.log
+│   │   │   │       └── attempt=2.log
+│   │   │   ├── run_id=scheduled__2025-10-28T16:00:00+00:00
+│   │   │   │   └── task_id=fetch_all_routes
+│   │   │   │       └── attempt=1.log
+│   │   │   ├── run_id=scheduled__2025-10-28T17:00:00+00:00
+│   │   │   │   ├── task_id=fetch_all_routes
+│   │   │   │   │   ├── attempt=1.log
+│   │   │   │   │   └── attempt=2.log
+│   │   │   │   └── task_id=fetch_data
+│   │   │   │       ├── attempt=1.log
+│   │   │   │       └── attempt=2.log
+│   │   │   └── run_id=scheduled__2025-10-28T18:00:00+00:00
+│   │   │       ├── task_id=fetch_all_routes
+│   │   │       │   └── attempt=1.log
+│   │   │       └── task_id=fetch_data
+│   │   │           └── attempt=1.log
+│   │   ├── dag_id=data_processing_dag
+│   │   │   └── run_id=manual__2025-10-28T18:51:30.913634+00:00
+│   │   │       ├── task_id=preprocess_data
+│   │   │       │   └── attempt=1.log
+│   │   │       └── task_id=validate_schema_tfdv
+│   │   │           ├── attempt=1.log
+│   │   │           └── attempt=2.log
+│   │   ├── dag_processor_manager
+│   │   │   └── dag_processor_manager.log
+│   │   └── scheduler
+│   │       ├── 2025-10-28
+│   │       │   ├── data_collection_dag.py.log
+│   │       │   ├── data_processing_dag.py.log
+│   │       │   ├── data_quality_dag.py.log
+│   │       │   ├── mbta_pipeline_dag.py.log
+│   │       │   └── mbta_pipeline_dvc.py.log
+│   │       └── latest -> 2025-10-28
+│   ├── output
+│   │   ├── routes_20251025_084603.json
+│   │   ├── routes_20251025_084607.json
+│   │   ├── routes_20251025_085427.json
+│   │   ├── routes_20251025_085543.json
+│   │   ├── routes_20251025_090001.json
+│   │   ├── routes_20251025_092443.json
+│   │   ├── routes_20251025_100000.json
+│   │   ├── routes_20251025_100210.json
+│   │   └── routes_20251028_074650.json
+│   ├── params.yaml
+│   ├── readme.md
+│   ├── screenshots
+│   │   ├── Airflow_Homepage.png
+│   │   ├── Data_Collection_Dag_Gantt.png
+│   │   ├── Data_Collection_Dag_Graph.png
+│   │   ├── Data_Processing_Dag_Gantt.png
+│   │   ├── Data_Processing_Dag_Graph.png
+│   │   ├── Data_Quality_Dag_Gantt.png
+│   │   ├── Data_Quality_Dag_Graph.png
+│   │   ├── Final_Data_Pipeline_Gantt.png
+│   │   └── Final_Data_Pipeline_Graph.png
+│   ├── scripts
+│   │   ├── __init__.py
+│   │   ├── detect_anomalies.py
+│   │   ├── detect_bias.py
+│   │   ├── fetch_all_routes.py
+│   │   ├── fetch_data.py
+│   │   ├── preprocess_data.py
+│   │   ├── run_quality_checks.py
+│   │   ├── utils.py
+│   │   ├── validate_schema_profile.py
+│   │   ├── validate_schema_tfdv.py
+│   │   ├── validate_schema.py
+│   │   └── visualize_bias_report.py
+│   └── tests
+│       ├── __init__.py
+│       ├── test_preprocess.py
+│       └── test_utils.py
+├── docker-compose.yaml
+├── dvc.lock
+├── dvc.yaml
+├── frontend
+│   ├── app.py
+│   ├── mbta_chatbot
+│   │   └── chatbot.py
+│   └── requirements.txt
+├── LICENSE
+├── logs
+│   └── scheduler
+│       ├── 2025-11-17
+│       ├── 2025-11-26
+│       ├── 2025-12-01
+│       ├── 2025-12-04
+│       └── latest -> 2025-12-04
+├── ml_configs
+│   └── paths.yaml
+├── mlruns
+│   ├── 212395407448862941
+│   │   ├── 11faa1637093402da6f44d6a3b6c1225
+│   │   │   ├── artifacts
+│   │   │   │   ├── lime_explanation.html
+│   │   │   │   └── shap_summary.png
+│   │   │   ├── meta.yaml
+│   │   │   ├── params
+│   │   │   │   └── explained_instance_index
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── b2b16697a5c54275b0bc6232017d6512
+│   │   │   ├── artifacts
+│   │   │   │   ├── fairness_by_direction.png
+│   │   │   │   └── fairness_metrics.csv
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   └── demographic_parity_difference
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── e4ae7f98654048dabecc3f4b2d4ccb7e
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── accuracy
+│   │   │   │   ├── f1
+│   │   │   │   ├── precision
+│   │   │   │   ├── recall
+│   │   │   │   └── roc_auc
+│   │   │   ├── outputs
+│   │   │   │   └── m-1cdec2dcef714344aa2c930873170483
+│   │   │   │       └── meta.yaml
+│   │   │   ├── params
+│   │   │   │   ├── C
+│   │   │   │   ├── class_weight
+│   │   │   │   ├── penalty
+│   │   │   │   └── solver
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── f0e62ac540f94539861f5d247559bdc7
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── accuracy
+│   │   │   │   ├── f1
+│   │   │   │   ├── precision
+│   │   │   │   ├── recall
+│   │   │   │   └── roc_auc
+│   │   │   ├── outputs
+│   │   │   │   └── m-8f266e08b02a46feba63f9408d45acac
+│   │   │   │       └── meta.yaml
+│   │   │   ├── params
+│   │   │   │   ├── C
+│   │   │   │   ├── class_weight
+│   │   │   │   ├── dual
+│   │   │   │   ├── fit_intercept
+│   │   │   │   ├── intercept_scaling
+│   │   │   │   ├── l1_ratio
+│   │   │   │   ├── max_iter
+│   │   │   │   ├── multi_class
+│   │   │   │   ├── n_jobs
+│   │   │   │   ├── penalty
+│   │   │   │   ├── random_state
+│   │   │   │   ├── solver
+│   │   │   │   ├── tol
+│   │   │   │   ├── verbose
+│   │   │   │   └── warm_start
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── meta.yaml
+│   │   └── models
+│   │       ├── m-1cdec2dcef714344aa2c930873170483
+│   │       │   ├── artifacts
+│   │       │   │   ├── conda.yaml
+│   │       │   │   ├── MLmodel
+│   │       │   │   ├── model.pkl
+│   │       │   │   ├── python_env.yaml
+│   │       │   │   └── requirements.txt
+│   │       │   ├── meta.yaml
+│   │       │   ├── metrics
+│   │       │   │   ├── accuracy
+│   │       │   │   ├── f1
+│   │       │   │   ├── precision
+│   │       │   │   ├── recall
+│   │       │   │   └── roc_auc
+│   │       │   ├── params
+│   │       │   │   ├── C
+│   │       │   │   ├── class_weight
+│   │       │   │   ├── penalty
+│   │       │   │   └── solver
+│   │       │   └── tags
+│   │       │       ├── mlflow.source.git.commit
+│   │       │       ├── mlflow.source.name
+│   │       │       ├── mlflow.source.type
+│   │       │       └── mlflow.user
+│   │       └── m-8f266e08b02a46feba63f9408d45acac
+│   │           ├── artifacts
+│   │           │   ├── conda.yaml
+│   │           │   ├── MLmodel
+│   │           │   ├── model.pkl
+│   │           │   ├── python_env.yaml
+│   │           │   └── requirements.txt
+│   │           ├── meta.yaml
+│   │           ├── metrics
+│   │           │   ├── accuracy
+│   │           │   ├── f1
+│   │           │   ├── precision
+│   │           │   ├── recall
+│   │           │   └── roc_auc
+│   │           ├── params
+│   │           │   ├── C
+│   │           │   ├── class_weight
+│   │           │   ├── dual
+│   │           │   ├── fit_intercept
+│   │           │   ├── intercept_scaling
+│   │           │   ├── l1_ratio
+│   │           │   ├── max_iter
+│   │           │   ├── multi_class
+│   │           │   ├── n_jobs
+│   │           │   ├── penalty
+│   │           │   ├── random_state
+│   │           │   ├── solver
+│   │           │   ├── tol
+│   │           │   ├── verbose
+│   │           │   └── warm_start
+│   │           └── tags
+│   │               ├── mlflow.source.git.commit
+│   │               ├── mlflow.source.name
+│   │               ├── mlflow.source.type
+│   │               └── mlflow.user
+│   ├── 568292785940474550
+│   │   ├── 6ca198989f9342969c95e87add53f2ea
+│   │   │   ├── artifacts
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   ├── outputs
+│   │   │   │   └── m-3c1020680e2f4f7a9b957b9982fa33e6
+│   │   │   │       └── meta.yaml
+│   │   │   ├── params
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── meta.yaml
+│   │   └── models
+│   │       └── m-3c1020680e2f4f7a9b957b9982fa33e6
+│   │           ├── artifacts
+│   │           │   ├── conda.yaml
+│   │           │   ├── MLmodel
+│   │           │   ├── model.pkl
+│   │           │   ├── python_env.yaml
+│   │           │   └── requirements.txt
+│   │           ├── meta.yaml
+│   │           ├── metrics
+│   │           ├── params
+│   │           └── tags
+│   │               ├── mlflow.modelVersions
+│   │               ├── mlflow.source.git.commit
+│   │               ├── mlflow.source.name
+│   │               ├── mlflow.source.type
+│   │               └── mlflow.user
+│   ├── 568721387827880141
+│   │   ├── a7001f94641f4dad9c73156e21a34b7c
+│   │   │   ├── artifacts
+│   │   │   │   ├── drift_report.html
+│   │   │   │   └── drift_report.json
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── psi_direction_id
+│   │   │   │   └── psi_stop_sequence
+│   │   │   ├── params
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── c0b629cf3330496582e3928dc742f571
+│   │   │   ├── artifacts
+│   │   │   │   ├── drift_report.html
+│   │   │   │   └── drift_report.json
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── psi_direction_id
+│   │   │   │   └── psi_stop_sequence
+│   │   │   ├── params
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   └── meta.yaml
+│   ├── 586802614623188657
+│   │   ├── 0615f166572140a0af98920e8422efcc
+│   │   │   ├── artifacts
+│   │   │   │   ├── lime_explanation.html
+│   │   │   │   ├── shap_importance.csv
+│   │   │   │   └── shap_summary.png
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   ├── params
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 09d30bb5397a49a48d8b50f895838063
+│   │   │   ├── artifacts
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── accuracy
+│   │   │   │   ├── f1
+│   │   │   │   ├── precision
+│   │   │   │   ├── recall
+│   │   │   │   └── roc_auc
+│   │   │   ├── outputs
+│   │   │   │   └── m-54dc8c6f88914fa0987236ba39407965
+│   │   │   │       └── meta.yaml
+│   │   │   ├── params
+│   │   │   │   ├── boosting_type
+│   │   │   │   ├── class_weight
+│   │   │   │   ├── colsample_bytree
+│   │   │   │   ├── importance_type
+│   │   │   │   ├── learning_rate
+│   │   │   │   ├── max_depth
+│   │   │   │   ├── min_child_samples
+│   │   │   │   ├── min_child_weight
+│   │   │   │   ├── min_split_gain
+│   │   │   │   ├── n_estimators
+│   │   │   │   ├── n_jobs
+│   │   │   │   ├── num_leaves
+│   │   │   │   ├── objective
+│   │   │   │   ├── random_state
+│   │   │   │   ├── reg_alpha
+│   │   │   │   ├── reg_lambda
+│   │   │   │   ├── subsample
+│   │   │   │   ├── subsample_for_bin
+│   │   │   │   └── subsample_freq
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 129b53bb91f44b7faf205976b7769299
+│   │   │   ├── artifacts
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── accuracy
+│   │   │   │   ├── f1
+│   │   │   │   ├── precision
+│   │   │   │   ├── recall
+│   │   │   │   └── roc_auc
+│   │   │   ├── outputs
+│   │   │   │   └── m-31a8bf744c954a2a9d5c7726cd47af50
+│   │   │   │       └── meta.yaml
+│   │   │   ├── params
+│   │   │   │   ├── boosting_type
+│   │   │   │   ├── class_weight
+│   │   │   │   ├── colsample_bytree
+│   │   │   │   ├── importance_type
+│   │   │   │   ├── learning_rate
+│   │   │   │   ├── max_depth
+│   │   │   │   ├── min_child_samples
+│   │   │   │   ├── min_child_weight
+│   │   │   │   ├── min_split_gain
+│   │   │   │   ├── n_estimators
+│   │   │   │   ├── n_jobs
+│   │   │   │   ├── num_leaves
+│   │   │   │   ├── objective
+│   │   │   │   ├── random_state
+│   │   │   │   ├── reg_alpha
+│   │   │   │   ├── reg_lambda
+│   │   │   │   ├── subsample
+│   │   │   │   ├── subsample_for_bin
+│   │   │   │   └── subsample_freq
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 157b72671d174281a11b9794edefe256
+│   │   │   ├── artifacts
+│   │   │   │   ├── lime_explanation.html
+│   │   │   │   ├── shap_importance.csv
+│   │   │   │   └── shap_summary.png
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   ├── params
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 2c56466537a34d09ae2c2738663fa292
+│   │   │   ├── artifacts
+│   │   │   │   ├── model_comparison.json
+│   │   │   │   └── model_comparison.png
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── baseline_lgbm_auc
+│   │   │   │   ├── baseline_logreg_auc
+│   │   │   │   └── logreg_tuned_auc
+│   │   │   ├── outputs
+│   │   │   │   └── m-1d039efacaff4287818dfe665e7ac526
+│   │   │   │       └── meta.yaml
+│   │   │   ├── params
+│   │   │   │   └── selected_model
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 302a8e49f11a4e189cee868243d9e2f3
+│   │   │   ├── artifacts
+│   │   │   │   ├── model_comparison.json
+│   │   │   │   └── model_comparison.png
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── baseline_lgbm_accuracy
+│   │   │   │   ├── baseline_lgbm_auc
+│   │   │   │   ├── baseline_lgbm_f1
+│   │   │   │   ├── logreg_tuned_accuracy
+│   │   │   │   ├── logreg_tuned_auc
+│   │   │   │   └── logreg_tuned_f1
+│   │   │   ├── outputs
+│   │   │   │   └── m-64c1bb57414b4c778b60a1aab1db6592
+│   │   │   │       └── meta.yaml
+│   │   │   ├── params
+│   │   │   │   └── selected_model
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 30ffc81e23834af6ad54918d6d440068
+│   │   │   ├── artifacts
+│   │   │   │   ├── lime_explanation.html
+│   │   │   │   ├── shap_importance.csv
+│   │   │   │   └── shap_summary.png
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   ├── params
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 318e2d2faf2b400780cb7e542659060b
+│   │   │   ├── artifacts
+│   │   │   │   ├── lime_explanation.html
+│   │   │   │   ├── shap_importance.csv
+│   │   │   │   └── shap_summary.png
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   ├── params
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 3811c1824f5846d8b3a41c0fdfbde0cd
+│   │   │   ├── artifacts
+│   │   │   │   ├── bias_plot.html
+│   │   │   │   └── bias_report.csv
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── accuracy_gap
+│   │   │   │   └── selection_rate_gap
+│   │   │   ├── params
+│   │   │   │   └── sensitive_feature
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 3c5d71161c204edeaa4ec3e14668e3c4
+│   │   │   ├── artifacts
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── accuracy
+│   │   │   │   ├── f1
+│   │   │   │   ├── precision
+│   │   │   │   ├── recall
+│   │   │   │   └── roc_auc
+│   │   │   ├── outputs
+│   │   │   │   └── m-86c24105cc4b46fdbedf3356dcc8900e
+│   │   │   │       └── meta.yaml
+│   │   │   ├── params
+│   │   │   │   ├── boosting_type
+│   │   │   │   ├── class_weight
+│   │   │   │   ├── colsample_bytree
+│   │   │   │   ├── importance_type
+│   │   │   │   ├── learning_rate
+│   │   │   │   ├── max_depth
+│   │   │   │   ├── min_child_samples
+│   │   │   │   ├── min_child_weight
+│   │   │   │   ├── min_split_gain
+│   │   │   │   ├── n_estimators
+│   │   │   │   ├── n_jobs
+│   │   │   │   ├── num_leaves
+│   │   │   │   ├── objective
+│   │   │   │   ├── random_state
+│   │   │   │   ├── reg_alpha
+│   │   │   │   ├── reg_lambda
+│   │   │   │   ├── subsample
+│   │   │   │   ├── subsample_for_bin
+│   │   │   │   └── subsample_freq
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 51bd49b30e51458a8559dba760c8f04f
+│   │   │   ├── artifacts
+│   │   │   │   ├── lime_explanation.html
+│   │   │   │   ├── shap_importance.csv
+│   │   │   │   └── shap_summary.png
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   ├── params
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 5ad7b5cc9cc447ceae4d248ac3ba4a00
+│   │   │   ├── artifacts
+│   │   │   │   ├── lime_explanation.html
+│   │   │   │   ├── shap_importance.csv
+│   │   │   │   └── shap_summary.png
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   ├── params
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 676be31d5abd4d8c907d6921d43c8e58
+│   │   │   ├── artifacts
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── accuracy
+│   │   │   │   ├── f1
+│   │   │   │   ├── precision
+│   │   │   │   ├── recall
+│   │   │   │   └── roc_auc
+│   │   │   ├── outputs
+│   │   │   │   └── m-463aa7fc7bd347aeaeaa74bcd548a3b6
+│   │   │   │       └── meta.yaml
+│   │   │   ├── params
+│   │   │   │   ├── boosting_type
+│   │   │   │   ├── class_weight
+│   │   │   │   ├── colsample_bytree
+│   │   │   │   ├── importance_type
+│   │   │   │   ├── learning_rate
+│   │   │   │   ├── max_depth
+│   │   │   │   ├── min_child_samples
+│   │   │   │   ├── min_child_weight
+│   │   │   │   ├── min_split_gain
+│   │   │   │   ├── n_estimators
+│   │   │   │   ├── n_jobs
+│   │   │   │   ├── num_leaves
+│   │   │   │   ├── objective
+│   │   │   │   ├── random_state
+│   │   │   │   ├── reg_alpha
+│   │   │   │   ├── reg_lambda
+│   │   │   │   ├── subsample
+│   │   │   │   ├── subsample_for_bin
+│   │   │   │   └── subsample_freq
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 6fedd295fb7d406681cbf46dfa82dfa8
+│   │   │   ├── artifacts
+│   │   │   │   ├── lime_explanation.html
+│   │   │   │   ├── shap_importance.csv
+│   │   │   │   └── shap_summary.png
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   ├── params
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 73267bf3739444abb5803106642739ad
+│   │   │   ├── artifacts
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── accuracy
+│   │   │   │   ├── f1
+│   │   │   │   └── roc_auc
+│   │   │   ├── outputs
+│   │   │   │   └── m-f22388bbd3d4434c8505ef839c62b817
+│   │   │   │       └── meta.yaml
+│   │   │   ├── params
+│   │   │   │   ├── C
+│   │   │   │   └── solver
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 7e555c32832d43208179e3634786b290
+│   │   │   ├── artifacts
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── accuracy
+│   │   │   │   ├── f1
+│   │   │   │   ├── precision
+│   │   │   │   ├── recall
+│   │   │   │   └── roc_auc
+│   │   │   ├── outputs
+│   │   │   │   └── m-970e4e2c29a247b88dac0f0701fa255b
+│   │   │   │       └── meta.yaml
+│   │   │   ├── params
+│   │   │   │   ├── boosting_type
+│   │   │   │   ├── class_weight
+│   │   │   │   ├── colsample_bytree
+│   │   │   │   ├── importance_type
+│   │   │   │   ├── learning_rate
+│   │   │   │   ├── max_depth
+│   │   │   │   ├── min_child_samples
+│   │   │   │   ├── min_child_weight
+│   │   │   │   ├── min_split_gain
+│   │   │   │   ├── n_estimators
+│   │   │   │   ├── n_jobs
+│   │   │   │   ├── num_leaves
+│   │   │   │   ├── objective
+│   │   │   │   ├── random_state
+│   │   │   │   ├── reg_alpha
+│   │   │   │   ├── reg_lambda
+│   │   │   │   ├── subsample
+│   │   │   │   ├── subsample_for_bin
+│   │   │   │   └── subsample_freq
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 88d82ace95214088ab709e639fbb8ee9
+│   │   │   ├── artifacts
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── accuracy
+│   │   │   │   ├── f1
+│   │   │   │   └── roc_auc
+│   │   │   ├── outputs
+│   │   │   │   └── m-cea8776c2a0446c292827dec7cb48179
+│   │   │   │       └── meta.yaml
+│   │   │   ├── params
+│   │   │   │   ├── C
+│   │   │   │   └── solver
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── 9c7f38caa07346b89fbc42fb9e04654a
+│   │   │   ├── artifacts
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── accuracy
+│   │   │   │   ├── f1
+│   │   │   │   └── roc_auc
+│   │   │   ├── outputs
+│   │   │   │   └── m-396d174da4c84fc9b9be012e04df78b3
+│   │   │   │       └── meta.yaml
+│   │   │   ├── params
+│   │   │   │   ├── C
+│   │   │   │   └── solver
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── b723151bb316479687d8614d29e5fe30
+│   │   │   ├── artifacts
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── accuracy
+│   │   │   │   ├── f1
+│   │   │   │   ├── precision
+│   │   │   │   ├── recall
+│   │   │   │   └── roc_auc
+│   │   │   ├── outputs
+│   │   │   │   └── m-65f23917dfbb43729c4d7b2486b0f183
+│   │   │   │       └── meta.yaml
+│   │   │   ├── params
+│   │   │   │   ├── C
+│   │   │   │   ├── class_weight
+│   │   │   │   ├── dual
+│   │   │   │   ├── fit_intercept
+│   │   │   │   ├── intercept_scaling
+│   │   │   │   ├── l1_ratio
+│   │   │   │   ├── max_iter
+│   │   │   │   ├── multi_class
+│   │   │   │   ├── n_jobs
+│   │   │   │   ├── penalty
+│   │   │   │   ├── random_state
+│   │   │   │   ├── solver
+│   │   │   │   ├── tol
+│   │   │   │   ├── verbose
+│   │   │   │   └── warm_start
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── c0876a5d5c954bc68ea63a1be16781f1
+│   │   │   ├── artifacts
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── accuracy
+│   │   │   │   ├── f1
+│   │   │   │   ├── precision
+│   │   │   │   ├── recall
+│   │   │   │   └── roc_auc
+│   │   │   ├── outputs
+│   │   │   │   └── m-920800458bd04f0dbc3d752d935cb01b
+│   │   │   │       └── meta.yaml
+│   │   │   ├── params
+│   │   │   │   ├── boosting_type
+│   │   │   │   ├── class_weight
+│   │   │   │   ├── colsample_bytree
+│   │   │   │   ├── importance_type
+│   │   │   │   ├── learning_rate
+│   │   │   │   ├── max_depth
+│   │   │   │   ├── min_child_samples
+│   │   │   │   ├── min_child_weight
+│   │   │   │   ├── min_split_gain
+│   │   │   │   ├── n_estimators
+│   │   │   │   ├── n_jobs
+│   │   │   │   ├── num_leaves
+│   │   │   │   ├── objective
+│   │   │   │   ├── random_state
+│   │   │   │   ├── reg_alpha
+│   │   │   │   ├── reg_lambda
+│   │   │   │   ├── subsample
+│   │   │   │   ├── subsample_for_bin
+│   │   │   │   └── subsample_freq
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── d9df61b0b3234a189c0c5cee21d97b70
+│   │   │   ├── artifacts
+│   │   │   │   ├── fairness_by_direction.png
+│   │   │   │   └── fairness_metrics.csv
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   └── demographic_parity_difference
+│   │   │   ├── params
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── de0bf359174742909cd596c323bbb414
+│   │   │   ├── artifacts
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   ├── accuracy
+│   │   │   │   ├── f1
+│   │   │   │   ├── precision
+│   │   │   │   ├── recall
+│   │   │   │   └── roc_auc
+│   │   │   ├── outputs
+│   │   │   │   └── m-01549c5cc3044629b559552ce4c5c47e
+│   │   │   │       └── meta.yaml
+│   │   │   ├── params
+│   │   │   │   ├── boosting_type
+│   │   │   │   ├── class_weight
+│   │   │   │   ├── colsample_bytree
+│   │   │   │   ├── importance_type
+│   │   │   │   ├── learning_rate
+│   │   │   │   ├── max_depth
+│   │   │   │   ├── min_child_samples
+│   │   │   │   ├── min_child_weight
+│   │   │   │   ├── min_split_gain
+│   │   │   │   ├── n_estimators
+│   │   │   │   ├── n_jobs
+│   │   │   │   ├── num_leaves
+│   │   │   │   ├── objective
+│   │   │   │   ├── random_state
+│   │   │   │   ├── reg_alpha
+│   │   │   │   ├── reg_lambda
+│   │   │   │   ├── subsample
+│   │   │   │   ├── subsample_for_bin
+│   │   │   │   └── subsample_freq
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── e32edbd5497d4df089fa3d902d0b3ab6
+│   │   │   ├── artifacts
+│   │   │   │   ├── lime_explanation.html
+│   │   │   │   ├── shap_importance.csv
+│   │   │   │   └── shap_summary.png
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   ├── params
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── fd639d3dd6aa4821bdc7d5cf08180253
+│   │   │   ├── artifacts
+│   │   │   │   ├── fairness_by_direction.png
+│   │   │   │   └── fairness_metrics.csv
+│   │   │   ├── meta.yaml
+│   │   │   ├── metrics
+│   │   │   │   └── demographic_parity_difference
+│   │   │   ├── params
+│   │   │   └── tags
+│   │   │       ├── mlflow.runName
+│   │   │       ├── mlflow.source.git.commit
+│   │   │       ├── mlflow.source.name
+│   │   │       ├── mlflow.source.type
+│   │   │       └── mlflow.user
+│   │   ├── meta.yaml
+│   │   └── models
+│   │       ├── m-01549c5cc3044629b559552ce4c5c47e
+│   │       │   ├── artifacts
+│   │       │   │   ├── conda.yaml
+│   │       │   │   ├── MLmodel
+│   │       │   │   ├── model.pkl
+│   │       │   │   ├── python_env.yaml
+│   │       │   │   └── requirements.txt
+│   │       │   ├── meta.yaml
+│   │       │   ├── metrics
+│   │       │   │   ├── accuracy
+│   │       │   │   ├── f1
+│   │       │   │   ├── precision
+│   │       │   │   ├── recall
+│   │       │   │   └── roc_auc
+│   │       │   ├── params
+│   │       │   │   ├── boosting_type
+│   │       │   │   ├── class_weight
+│   │       │   │   ├── colsample_bytree
+│   │       │   │   ├── importance_type
+│   │       │   │   ├── learning_rate
+│   │       │   │   ├── max_depth
+│   │       │   │   ├── min_child_samples
+│   │       │   │   ├── min_child_weight
+│   │       │   │   ├── min_split_gain
+│   │       │   │   ├── n_estimators
+│   │       │   │   ├── n_jobs
+│   │       │   │   ├── num_leaves
+│   │       │   │   ├── objective
+│   │       │   │   ├── random_state
+│   │       │   │   ├── reg_alpha
+│   │       │   │   ├── reg_lambda
+│   │       │   │   ├── subsample
+│   │       │   │   ├── subsample_for_bin
+│   │       │   │   └── subsample_freq
+│   │       │   └── tags
+│   │       │       ├── mlflow.source.git.commit
+│   │       │       ├── mlflow.source.name
+│   │       │       ├── mlflow.source.type
+│   │       │       └── mlflow.user
+│   │       ├── m-1d039efacaff4287818dfe665e7ac526
+│   │       │   ├── artifacts
+│   │       │   │   ├── conda.yaml
+│   │       │   │   ├── MLmodel
+│   │       │   │   ├── model.pkl
+│   │       │   │   ├── python_env.yaml
+│   │       │   │   └── requirements.txt
+│   │       │   ├── meta.yaml
+│   │       │   ├── metrics
+│   │       │   │   ├── baseline_lgbm_auc
+│   │       │   │   ├── baseline_logreg_auc
+│   │       │   │   └── logreg_tuned_auc
+│   │       │   ├── params
+│   │       │   │   └── selected_model
+│   │       │   └── tags
+│   │       │       ├── mlflow.source.git.commit
+│   │       │       ├── mlflow.source.name
+│   │       │       ├── mlflow.source.type
+│   │       │       └── mlflow.user
+│   │       ├── m-31a8bf744c954a2a9d5c7726cd47af50
+│   │       │   ├── artifacts
+│   │       │   │   ├── conda.yaml
+│   │       │   │   ├── MLmodel
+│   │       │   │   ├── model.pkl
+│   │       │   │   ├── python_env.yaml
+│   │       │   │   └── requirements.txt
+│   │       │   ├── meta.yaml
+│   │       │   ├── metrics
+│   │       │   │   ├── accuracy
+│   │       │   │   ├── f1
+│   │       │   │   ├── precision
+│   │       │   │   ├── recall
+│   │       │   │   └── roc_auc
+│   │       │   ├── params
+│   │       │   │   ├── boosting_type
+│   │       │   │   ├── class_weight
+│   │       │   │   ├── colsample_bytree
+│   │       │   │   ├── importance_type
+│   │       │   │   ├── learning_rate
+│   │       │   │   ├── max_depth
+│   │       │   │   ├── min_child_samples
+│   │       │   │   ├── min_child_weight
+│   │       │   │   ├── min_split_gain
+│   │       │   │   ├── n_estimators
+│   │       │   │   ├── n_jobs
+│   │       │   │   ├── num_leaves
+│   │       │   │   ├── objective
+│   │       │   │   ├── random_state
+│   │       │   │   ├── reg_alpha
+│   │       │   │   ├── reg_lambda
+│   │       │   │   ├── subsample
+│   │       │   │   ├── subsample_for_bin
+│   │       │   │   └── subsample_freq
+│   │       │   └── tags
+│   │       │       ├── mlflow.source.git.commit
+│   │       │       ├── mlflow.source.name
+│   │       │       ├── mlflow.source.type
+│   │       │       └── mlflow.user
+│   │       ├── m-396d174da4c84fc9b9be012e04df78b3
+│   │       │   ├── artifacts
+│   │       │   │   ├── conda.yaml
+│   │       │   │   ├── MLmodel
+│   │       │   │   ├── model.pkl
+│   │       │   │   ├── python_env.yaml
+│   │       │   │   └── requirements.txt
+│   │       │   ├── meta.yaml
+│   │       │   ├── metrics
+│   │       │   │   ├── accuracy
+│   │       │   │   ├── f1
+│   │       │   │   └── roc_auc
+│   │       │   ├── params
+│   │       │   │   ├── C
+│   │       │   │   └── solver
+│   │       │   └── tags
+│   │       │       ├── mlflow.source.git.commit
+│   │       │       ├── mlflow.source.name
+│   │       │       ├── mlflow.source.type
+│   │       │       └── mlflow.user
+│   │       ├── m-463aa7fc7bd347aeaeaa74bcd548a3b6
+│   │       │   ├── artifacts
+│   │       │   │   ├── conda.yaml
+│   │       │   │   ├── MLmodel
+│   │       │   │   ├── model.pkl
+│   │       │   │   ├── python_env.yaml
+│   │       │   │   └── requirements.txt
+│   │       │   ├── meta.yaml
+│   │       │   ├── metrics
+│   │       │   │   ├── accuracy
+│   │       │   │   ├── f1
+│   │       │   │   ├── precision
+│   │       │   │   ├── recall
+│   │       │   │   └── roc_auc
+│   │       │   ├── params
+│   │       │   │   ├── boosting_type
+│   │       │   │   ├── class_weight
+│   │       │   │   ├── colsample_bytree
+│   │       │   │   ├── importance_type
+│   │       │   │   ├── learning_rate
+│   │       │   │   ├── max_depth
+│   │       │   │   ├── min_child_samples
+│   │       │   │   ├── min_child_weight
+│   │       │   │   ├── min_split_gain
+│   │       │   │   ├── n_estimators
+│   │       │   │   ├── n_jobs
+│   │       │   │   ├── num_leaves
+│   │       │   │   ├── objective
+│   │       │   │   ├── random_state
+│   │       │   │   ├── reg_alpha
+│   │       │   │   ├── reg_lambda
+│   │       │   │   ├── subsample
+│   │       │   │   ├── subsample_for_bin
+│   │       │   │   └── subsample_freq
+│   │       │   └── tags
+│   │       │       ├── mlflow.source.git.commit
+│   │       │       ├── mlflow.source.name
+│   │       │       ├── mlflow.source.type
+│   │       │       └── mlflow.user
+│   │       ├── m-54dc8c6f88914fa0987236ba39407965
+│   │       │   ├── artifacts
+│   │       │   │   ├── conda.yaml
+│   │       │   │   ├── MLmodel
+│   │       │   │   ├── model.pkl
+│   │       │   │   ├── python_env.yaml
+│   │       │   │   └── requirements.txt
+│   │       │   ├── meta.yaml
+│   │       │   ├── metrics
+│   │       │   │   ├── accuracy
+│   │       │   │   ├── f1
+│   │       │   │   ├── precision
+│   │       │   │   ├── recall
+│   │       │   │   └── roc_auc
+│   │       │   ├── params
+│   │       │   │   ├── boosting_type
+│   │       │   │   ├── class_weight
+│   │       │   │   ├── colsample_bytree
+│   │       │   │   ├── importance_type
+│   │       │   │   ├── learning_rate
+│   │       │   │   ├── max_depth
+│   │       │   │   ├── min_child_samples
+│   │       │   │   ├── min_child_weight
+│   │       │   │   ├── min_split_gain
+│   │       │   │   ├── n_estimators
+│   │       │   │   ├── n_jobs
+│   │       │   │   ├── num_leaves
+│   │       │   │   ├── objective
+│   │       │   │   ├── random_state
+│   │       │   │   ├── reg_alpha
+│   │       │   │   ├── reg_lambda
+│   │       │   │   ├── subsample
+│   │       │   │   ├── subsample_for_bin
+│   │       │   │   └── subsample_freq
+│   │       │   └── tags
+│   │       │       ├── mlflow.source.git.commit
+│   │       │       ├── mlflow.source.name
+│   │       │       ├── mlflow.source.type
+│   │       │       └── mlflow.user
+│   │       ├── m-64c1bb57414b4c778b60a1aab1db6592
+│   │       │   ├── artifacts
+│   │       │   │   ├── conda.yaml
+│   │       │   │   ├── MLmodel
+│   │       │   │   ├── model.pkl
+│   │       │   │   ├── python_env.yaml
+│   │       │   │   └── requirements.txt
+│   │       │   ├── meta.yaml
+│   │       │   ├── metrics
+│   │       │   │   ├── baseline_lgbm_accuracy
+│   │       │   │   ├── baseline_lgbm_auc
+│   │       │   │   ├── baseline_lgbm_f1
+│   │       │   │   ├── logreg_tuned_accuracy
+│   │       │   │   ├── logreg_tuned_auc
+│   │       │   │   └── logreg_tuned_f1
+│   │       │   ├── params
+│   │       │   │   └── selected_model
+│   │       │   └── tags
+│   │       │       ├── mlflow.source.git.commit
+│   │       │       ├── mlflow.source.name
+│   │       │       ├── mlflow.source.type
+│   │       │       └── mlflow.user
+│   │       ├── m-65f23917dfbb43729c4d7b2486b0f183
+│   │       │   ├── artifacts
+│   │       │   │   ├── conda.yaml
+│   │       │   │   ├── MLmodel
+│   │       │   │   ├── model.pkl
+│   │       │   │   ├── python_env.yaml
+│   │       │   │   └── requirements.txt
+│   │       │   ├── meta.yaml
+│   │       │   ├── metrics
+│   │       │   │   ├── accuracy
+│   │       │   │   ├── f1
+│   │       │   │   ├── precision
+│   │       │   │   ├── recall
+│   │       │   │   └── roc_auc
+│   │       │   ├── params
+│   │       │   │   ├── C
+│   │       │   │   ├── class_weight
+│   │       │   │   ├── dual
+│   │       │   │   ├── fit_intercept
+│   │       │   │   ├── intercept_scaling
+│   │       │   │   ├── l1_ratio
+│   │       │   │   ├── max_iter
+│   │       │   │   ├── multi_class
+│   │       │   │   ├── n_jobs
+│   │       │   │   ├── penalty
+│   │       │   │   ├── random_state
+│   │       │   │   ├── solver
+│   │       │   │   ├── tol
+│   │       │   │   ├── verbose
+│   │       │   │   └── warm_start
+│   │       │   └── tags
+│   │       │       ├── mlflow.source.git.commit
+│   │       │       ├── mlflow.source.name
+│   │       │       ├── mlflow.source.type
+│   │       │       └── mlflow.user
+│   │       ├── m-86c24105cc4b46fdbedf3356dcc8900e
+│   │       │   ├── artifacts
+│   │       │   │   ├── conda.yaml
+│   │       │   │   ├── MLmodel
+│   │       │   │   ├── model.pkl
+│   │       │   │   ├── python_env.yaml
+│   │       │   │   └── requirements.txt
+│   │       │   ├── meta.yaml
+│   │       │   ├── metrics
+│   │       │   │   ├── accuracy
+│   │       │   │   ├── f1
+│   │       │   │   ├── precision
+│   │       │   │   ├── recall
+│   │       │   │   └── roc_auc
+│   │       │   ├── params
+│   │       │   │   ├── boosting_type
+│   │       │   │   ├── class_weight
+│   │       │   │   ├── colsample_bytree
+│   │       │   │   ├── importance_type
+│   │       │   │   ├── learning_rate
+│   │       │   │   ├── max_depth
+│   │       │   │   ├── min_child_samples
+│   │       │   │   ├── min_child_weight
+│   │       │   │   ├── min_split_gain
+│   │       │   │   ├── n_estimators
+│   │       │   │   ├── n_jobs
+│   │       │   │   ├── num_leaves
+│   │       │   │   ├── objective
+│   │       │   │   ├── random_state
+│   │       │   │   ├── reg_alpha
+│   │       │   │   ├── reg_lambda
+│   │       │   │   ├── subsample
+│   │       │   │   ├── subsample_for_bin
+│   │       │   │   └── subsample_freq
+│   │       │   └── tags
+│   │       │       ├── mlflow.source.git.commit
+│   │       │       ├── mlflow.source.name
+│   │       │       ├── mlflow.source.type
+│   │       │       └── mlflow.user
+│   │       ├── m-920800458bd04f0dbc3d752d935cb01b
+│   │       │   ├── artifacts
+│   │       │   │   ├── conda.yaml
+│   │       │   │   ├── MLmodel
+│   │       │   │   ├── model.pkl
+│   │       │   │   ├── python_env.yaml
+│   │       │   │   └── requirements.txt
+│   │       │   ├── meta.yaml
+│   │       │   ├── metrics
+│   │       │   │   ├── accuracy
+│   │       │   │   ├── f1
+│   │       │   │   ├── precision
+│   │       │   │   ├── recall
+│   │       │   │   └── roc_auc
+│   │       │   ├── params
+│   │       │   │   ├── boosting_type
+│   │       │   │   ├── class_weight
+│   │       │   │   ├── colsample_bytree
+│   │       │   │   ├── importance_type
+│   │       │   │   ├── learning_rate
+│   │       │   │   ├── max_depth
+│   │       │   │   ├── min_child_samples
+│   │       │   │   ├── min_child_weight
+│   │       │   │   ├── min_split_gain
+│   │       │   │   ├── n_estimators
+│   │       │   │   ├── n_jobs
+│   │       │   │   ├── num_leaves
+│   │       │   │   ├── objective
+│   │       │   │   ├── random_state
+│   │       │   │   ├── reg_alpha
+│   │       │   │   ├── reg_lambda
+│   │       │   │   ├── subsample
+│   │       │   │   ├── subsample_for_bin
+│   │       │   │   └── subsample_freq
+│   │       │   └── tags
+│   │       │       ├── mlflow.source.git.commit
+│   │       │       ├── mlflow.source.name
+│   │       │       ├── mlflow.source.type
+│   │       │       └── mlflow.user
+│   │       ├── m-970e4e2c29a247b88dac0f0701fa255b
+│   │       │   ├── artifacts
+│   │       │   │   ├── conda.yaml
+│   │       │   │   ├── MLmodel
+│   │       │   │   ├── model.pkl
+│   │       │   │   ├── python_env.yaml
+│   │       │   │   └── requirements.txt
+│   │       │   ├── meta.yaml
+│   │       │   ├── metrics
+│   │       │   │   ├── accuracy
+│   │       │   │   ├── f1
+│   │       │   │   ├── precision
+│   │       │   │   ├── recall
+│   │       │   │   └── roc_auc
+│   │       │   ├── params
+│   │       │   │   ├── boosting_type
+│   │       │   │   ├── class_weight
+│   │       │   │   ├── colsample_bytree
+│   │       │   │   ├── importance_type
+│   │       │   │   ├── learning_rate
+│   │       │   │   ├── max_depth
+│   │       │   │   ├── min_child_samples
+│   │       │   │   ├── min_child_weight
+│   │       │   │   ├── min_split_gain
+│   │       │   │   ├── n_estimators
+│   │       │   │   ├── n_jobs
+│   │       │   │   ├── num_leaves
+│   │       │   │   ├── objective
+│   │       │   │   ├── random_state
+│   │       │   │   ├── reg_alpha
+│   │       │   │   ├── reg_lambda
+│   │       │   │   ├── subsample
+│   │       │   │   ├── subsample_for_bin
+│   │       │   │   └── subsample_freq
+│   │       │   └── tags
+│   │       │       ├── mlflow.source.git.commit
+│   │       │       ├── mlflow.source.name
+│   │       │       ├── mlflow.source.type
+│   │       │       └── mlflow.user
+│   │       ├── m-cea8776c2a0446c292827dec7cb48179
+│   │       │   ├── artifacts
+│   │       │   │   ├── conda.yaml
+│   │       │   │   ├── MLmodel
+│   │       │   │   ├── model.pkl
+│   │       │   │   ├── python_env.yaml
+│   │       │   │   └── requirements.txt
+│   │       │   ├── meta.yaml
+│   │       │   ├── metrics
+│   │       │   │   ├── accuracy
+│   │       │   │   ├── f1
+│   │       │   │   └── roc_auc
+│   │       │   ├── params
+│   │       │   │   ├── C
+│   │       │   │   └── solver
+│   │       │   └── tags
+│   │       │       ├── mlflow.source.git.commit
+│   │       │       ├── mlflow.source.name
+│   │       │       ├── mlflow.source.type
+│   │       │       └── mlflow.user
+│   │       └── m-f22388bbd3d4434c8505ef839c62b817
+│   │           ├── artifacts
+│   │           │   ├── conda.yaml
+│   │           │   ├── MLmodel
+│   │           │   ├── model.pkl
+│   │           │   ├── python_env.yaml
+│   │           │   └── requirements.txt
+│   │           ├── meta.yaml
+│   │           ├── metrics
+│   │           │   ├── accuracy
+│   │           │   ├── f1
+│   │           │   └── roc_auc
+│   │           ├── params
+│   │           │   ├── C
+│   │           │   └── solver
+│   │           └── tags
+│   │               ├── mlflow.source.git.commit
+│   │               ├── mlflow.source.name
+│   │               ├── mlflow.source.type
+│   │               └── mlflow.user
+│   └── models
+│       └── Charlie_MBTA_Model
+│           ├── meta.yaml
+│           └── version-1
+│               └── meta.yaml
+├── Model_Development
+│   ├── data
+│   │   └── raw_events_2025
+│   │       ├── 2025-01_HREvents.csv
+│   │       ├── 2025-01_LREvents.csv
+│   │       ├── 2025-02_HREvents.csv
+│   │       ├── 2025-02_LREvents.csv
+│   │       ├── 2025-03_HREvents.csv
+│   │       ├── 2025-03_LREvents.csv
+│   │       ├── 2025-04_HREvents.csv
+│   │       ├── 2025-04_LREvents.csv
+│   │       ├── 2025-05_HREvents.csv
+│   │       ├── 2025-05_LREvents.csv
+│   │       ├── 2025-06_HREvents.csv
+│   │       ├── 2025-06_LREvents.csv
+│   │       ├── 2025-07_HREvents.csv
+│   │       ├── 2025-07_LREvents.csv
+│   │       ├── 2025-08_HREvents.csv
+│   │       ├── 2025-08_LREvents.csv
+│   │       ├── 2025-09_HREvents.csv
+│   │       ├── 2025-09_LREvents.csv
+│   │       ├── 2025-10_HREvents.csv
+│   │       └── 2025-10_LREvents.csv
+│   ├── gcp_upload
+│   │   ├── metadata.json
+│   │   └── model.joblib
+│   ├── ml_src
+│   │   ├── bias_analysis.py
+│   │   ├── data_loader.py
+│   │   ├── explainability.py
+│   │   ├── gcp_registry.py
+│   │   ├── model_explain.py
+│   │   ├── model_fairness.py
+│   │   ├── model_select.py
+│   │   ├── model_train.py
+│   │   ├── model_tuning.py
+│   │   ├── monitor_drift.py
+│   │   ├── preprocess_events.py
+│   │   ├── register_model.py
+│   │   └── utils
+│   │       ├── __init__.py
+│   │       └── logging.py
+│   ├── mlruns
+│   │   ├── 0
+│   │   │   └── meta.yaml
+│   │   ├── 471658306478039460
+│   │   │   ├── 141e6ac153484a42bb8f002da05cc52c
+│   │   │   │   ├── artifacts
+│   │   │   │   │   ├── model_comparison.json
+│   │   │   │   │   └── model_comparison.png
+│   │   │   │   ├── meta.yaml
+│   │   │   │   ├── metrics
+│   │   │   │   │   ├── baseline_lgbm_accuracy
+│   │   │   │   │   ├── baseline_lgbm_auc
+│   │   │   │   │   ├── baseline_lgbm_f1
+│   │   │   │   │   ├── final_model_existing_accuracy
+│   │   │   │   │   ├── final_model_existing_auc
+│   │   │   │   │   ├── final_model_existing_f1
+│   │   │   │   │   ├── logreg_tuned_accuracy
+│   │   │   │   │   ├── logreg_tuned_auc
+│   │   │   │   │   └── logreg_tuned_f1
+│   │   │   │   ├── outputs
+│   │   │   │   │   └── m-72e570c93b114d158d4870e4b5532b07
+│   │   │   │   │       └── meta.yaml
+│   │   │   │   ├── params
+│   │   │   │   │   └── selected_model
+│   │   │   │   └── tags
+│   │   │   │       ├── mlflow.runName
+│   │   │   │       ├── mlflow.source.git.commit
+│   │   │   │       ├── mlflow.source.name
+│   │   │   │       ├── mlflow.source.type
+│   │   │   │       └── mlflow.user
+│   │   │   ├── 56321875b48546cfa16585c77db8ce5f
+│   │   │   │   ├── artifacts
+│   │   │   │   ├── meta.yaml
+│   │   │   │   ├── metrics
+│   │   │   │   │   ├── accuracy
+│   │   │   │   │   ├── f1
+│   │   │   │   │   ├── precision
+│   │   │   │   │   ├── recall
+│   │   │   │   │   └── roc_auc
+│   │   │   │   ├── outputs
+│   │   │   │   │   └── m-824688d8052f473fb6e6595490d4e9d9
+│   │   │   │   │       └── meta.yaml
+│   │   │   │   ├── params
+│   │   │   │   │   ├── boosting_type
+│   │   │   │   │   ├── class_weight
+│   │   │   │   │   ├── colsample_bytree
+│   │   │   │   │   ├── importance_type
+│   │   │   │   │   ├── learning_rate
+│   │   │   │   │   ├── max_depth
+│   │   │   │   │   ├── min_child_samples
+│   │   │   │   │   ├── min_child_weight
+│   │   │   │   │   ├── min_split_gain
+│   │   │   │   │   ├── n_estimators
+│   │   │   │   │   ├── n_jobs
+│   │   │   │   │   ├── num_leaves
+│   │   │   │   │   ├── objective
+│   │   │   │   │   ├── random_state
+│   │   │   │   │   ├── reg_alpha
+│   │   │   │   │   ├── reg_lambda
+│   │   │   │   │   ├── subsample
+│   │   │   │   │   ├── subsample_for_bin
+│   │   │   │   │   └── subsample_freq
+│   │   │   │   └── tags
+│   │   │   │       ├── mlflow.runName
+│   │   │   │       ├── mlflow.source.git.commit
+│   │   │   │       ├── mlflow.source.name
+│   │   │   │       ├── mlflow.source.type
+│   │   │   │       └── mlflow.user
+│   │   │   ├── 5e4832bab0294aa9b37135a1b9f66dfe
+│   │   │   │   ├── artifacts
+│   │   │   │   │   ├── model_comparison.json
+│   │   │   │   │   └── model_comparison.png
+│   │   │   │   ├── meta.yaml
+│   │   │   │   ├── metrics
+│   │   │   │   │   ├── baseline_lgbm_accuracy
+│   │   │   │   │   ├── baseline_lgbm_auc
+│   │   │   │   │   ├── baseline_lgbm_f1
+│   │   │   │   │   ├── final_model_existing_accuracy
+│   │   │   │   │   ├── final_model_existing_auc
+│   │   │   │   │   ├── final_model_existing_f1
+│   │   │   │   │   ├── logreg_tuned_accuracy
+│   │   │   │   │   ├── logreg_tuned_auc
+│   │   │   │   │   └── logreg_tuned_f1
+│   │   │   │   ├── outputs
+│   │   │   │   │   └── m-3213bdd87311411ea95bf77181b4e2a1
+│   │   │   │   │       └── meta.yaml
+│   │   │   │   ├── params
+│   │   │   │   │   └── selected_model
+│   │   │   │   └── tags
+│   │   │   │       ├── mlflow.runName
+│   │   │   │       ├── mlflow.source.git.commit
+│   │   │   │       ├── mlflow.source.name
+│   │   │   │       ├── mlflow.source.type
+│   │   │   │       └── mlflow.user
+│   │   │   ├── 8dc15728bc144f569c211fbfae9660b1
+│   │   │   │   ├── artifacts
+│   │   │   │   │   ├── model_comparison.json
+│   │   │   │   │   └── model_comparison.png
+│   │   │   │   ├── meta.yaml
+│   │   │   │   ├── metrics
+│   │   │   │   │   ├── baseline_lgbm_accuracy
+│   │   │   │   │   ├── baseline_lgbm_auc
+│   │   │   │   │   ├── baseline_lgbm_f1
+│   │   │   │   │   ├── final_model_existing_accuracy
+│   │   │   │   │   ├── final_model_existing_auc
+│   │   │   │   │   ├── final_model_existing_f1
+│   │   │   │   │   ├── logreg_tuned_accuracy
+│   │   │   │   │   ├── logreg_tuned_auc
+│   │   │   │   │   └── logreg_tuned_f1
+│   │   │   │   ├── outputs
+│   │   │   │   │   └── m-8972f699570c460fa5df20567843c0b0
+│   │   │   │   │       └── meta.yaml
+│   │   │   │   ├── params
+│   │   │   │   │   └── selected_model
+│   │   │   │   └── tags
+│   │   │   │       ├── mlflow.runName
+│   │   │   │       ├── mlflow.source.git.commit
+│   │   │   │       ├── mlflow.source.name
+│   │   │   │       ├── mlflow.source.type
+│   │   │   │       └── mlflow.user
+│   │   │   ├── 9d8e6e20fc9f49bb8bbff6a83cf93368
+│   │   │   │   ├── artifacts
+│   │   │   │   │   ├── model_comparison.json
+│   │   │   │   │   └── model_comparison.png
+│   │   │   │   ├── meta.yaml
+│   │   │   │   ├── metrics
+│   │   │   │   │   ├── baseline_lgbm_accuracy
+│   │   │   │   │   ├── baseline_lgbm_auc
+│   │   │   │   │   ├── baseline_lgbm_f1
+│   │   │   │   │   ├── final_model_existing_accuracy
+│   │   │   │   │   ├── final_model_existing_auc
+│   │   │   │   │   ├── final_model_existing_f1
+│   │   │   │   │   ├── logreg_tuned_accuracy
+│   │   │   │   │   ├── logreg_tuned_auc
+│   │   │   │   │   └── logreg_tuned_f1
+│   │   │   │   ├── outputs
+│   │   │   │   │   └── m-dd551d830b4d47ccabd372d6403a5c1a
+│   │   │   │   │       └── meta.yaml
+│   │   │   │   ├── params
+│   │   │   │   │   └── selected_model
+│   │   │   │   └── tags
+│   │   │   │       ├── mlflow.runName
+│   │   │   │       ├── mlflow.source.git.commit
+│   │   │   │       ├── mlflow.source.name
+│   │   │   │       ├── mlflow.source.type
+│   │   │   │       └── mlflow.user
+│   │   │   ├── meta.yaml
+│   │   │   └── models
+│   │   │       ├── m-3213bdd87311411ea95bf77181b4e2a1
+│   │   │       │   ├── artifacts
+│   │   │       │   │   ├── conda.yaml
+│   │   │       │   │   ├── MLmodel
+│   │   │       │   │   ├── model.pkl
+│   │   │       │   │   ├── python_env.yaml
+│   │   │       │   │   └── requirements.txt
+│   │   │       │   ├── meta.yaml
+│   │   │       │   ├── metrics
+│   │   │       │   │   ├── baseline_lgbm_accuracy
+│   │   │       │   │   ├── baseline_lgbm_auc
+│   │   │       │   │   ├── baseline_lgbm_f1
+│   │   │       │   │   ├── final_model_existing_accuracy
+│   │   │       │   │   ├── final_model_existing_auc
+│   │   │       │   │   ├── final_model_existing_f1
+│   │   │       │   │   ├── logreg_tuned_accuracy
+│   │   │       │   │   ├── logreg_tuned_auc
+│   │   │       │   │   └── logreg_tuned_f1
+│   │   │       │   ├── params
+│   │   │       │   │   └── selected_model
+│   │   │       │   └── tags
+│   │   │       │       ├── mlflow.source.git.commit
+│   │   │       │       ├── mlflow.source.name
+│   │   │       │       ├── mlflow.source.type
+│   │   │       │       └── mlflow.user
+│   │   │       ├── m-72e570c93b114d158d4870e4b5532b07
+│   │   │       │   ├── artifacts
+│   │   │       │   │   ├── conda.yaml
+│   │   │       │   │   ├── MLmodel
+│   │   │       │   │   ├── model.pkl
+│   │   │       │   │   ├── python_env.yaml
+│   │   │       │   │   └── requirements.txt
+│   │   │       │   ├── meta.yaml
+│   │   │       │   ├── metrics
+│   │   │       │   │   ├── baseline_lgbm_accuracy
+│   │   │       │   │   ├── baseline_lgbm_auc
+│   │   │       │   │   ├── baseline_lgbm_f1
+│   │   │       │   │   ├── final_model_existing_accuracy
+│   │   │       │   │   ├── final_model_existing_auc
+│   │   │       │   │   ├── final_model_existing_f1
+│   │   │       │   │   ├── logreg_tuned_accuracy
+│   │   │       │   │   ├── logreg_tuned_auc
+│   │   │       │   │   └── logreg_tuned_f1
+│   │   │       │   ├── params
+│   │   │       │   │   └── selected_model
+│   │   │       │   └── tags
+│   │   │       │       ├── mlflow.source.git.commit
+│   │   │       │       ├── mlflow.source.name
+│   │   │       │       ├── mlflow.source.type
+│   │   │       │       └── mlflow.user
+│   │   │       ├── m-824688d8052f473fb6e6595490d4e9d9
+│   │   │       │   ├── artifacts
+│   │   │       │   │   ├── conda.yaml
+│   │   │       │   │   ├── MLmodel
+│   │   │       │   │   ├── model.pkl
+│   │   │       │   │   ├── python_env.yaml
+│   │   │       │   │   └── requirements.txt
+│   │   │       │   ├── meta.yaml
+│   │   │       │   ├── metrics
+│   │   │       │   │   ├── accuracy
+│   │   │       │   │   ├── f1
+│   │   │       │   │   ├── precision
+│   │   │       │   │   ├── recall
+│   │   │       │   │   └── roc_auc
+│   │   │       │   ├── params
+│   │   │       │   │   ├── boosting_type
+│   │   │       │   │   ├── class_weight
+│   │   │       │   │   ├── colsample_bytree
+│   │   │       │   │   ├── importance_type
+│   │   │       │   │   ├── learning_rate
+│   │   │       │   │   ├── max_depth
+│   │   │       │   │   ├── min_child_samples
+│   │   │       │   │   ├── min_child_weight
+│   │   │       │   │   ├── min_split_gain
+│   │   │       │   │   ├── n_estimators
+│   │   │       │   │   ├── n_jobs
+│   │   │       │   │   ├── num_leaves
+│   │   │       │   │   ├── objective
+│   │   │       │   │   ├── random_state
+│   │   │       │   │   ├── reg_alpha
+│   │   │       │   │   ├── reg_lambda
+│   │   │       │   │   ├── subsample
+│   │   │       │   │   ├── subsample_for_bin
+│   │   │       │   │   └── subsample_freq
+│   │   │       │   └── tags
+│   │   │       │       ├── mlflow.source.git.commit
+│   │   │       │       ├── mlflow.source.name
+│   │   │       │       ├── mlflow.source.type
+│   │   │       │       └── mlflow.user
+│   │   │       ├── m-8972f699570c460fa5df20567843c0b0
+│   │   │       │   ├── artifacts
+│   │   │       │   │   ├── conda.yaml
+│   │   │       │   │   ├── MLmodel
+│   │   │       │   │   ├── model.pkl
+│   │   │       │   │   ├── python_env.yaml
+│   │   │       │   │   └── requirements.txt
+│   │   │       │   ├── meta.yaml
+│   │   │       │   ├── metrics
+│   │   │       │   │   ├── baseline_lgbm_accuracy
+│   │   │       │   │   ├── baseline_lgbm_auc
+│   │   │       │   │   ├── baseline_lgbm_f1
+│   │   │       │   │   ├── final_model_existing_accuracy
+│   │   │       │   │   ├── final_model_existing_auc
+│   │   │       │   │   ├── final_model_existing_f1
+│   │   │       │   │   ├── logreg_tuned_accuracy
+│   │   │       │   │   ├── logreg_tuned_auc
+│   │   │       │   │   └── logreg_tuned_f1
+│   │   │       │   ├── params
+│   │   │       │   │   └── selected_model
+│   │   │       │   └── tags
+│   │   │       │       ├── mlflow.source.git.commit
+│   │   │       │       ├── mlflow.source.name
+│   │   │       │       ├── mlflow.source.type
+│   │   │       │       └── mlflow.user
+│   │   │       └── m-dd551d830b4d47ccabd372d6403a5c1a
+│   │   │           ├── artifacts
+│   │   │           │   ├── conda.yaml
+│   │   │           │   ├── MLmodel
+│   │   │           │   ├── model.pkl
+│   │   │           │   ├── python_env.yaml
+│   │   │           │   └── requirements.txt
+│   │   │           ├── meta.yaml
+│   │   │           ├── metrics
+│   │   │           │   ├── baseline_lgbm_accuracy
+│   │   │           │   ├── baseline_lgbm_auc
+│   │   │           │   ├── baseline_lgbm_f1
+│   │   │           │   ├── final_model_existing_accuracy
+│   │   │           │   ├── final_model_existing_auc
+│   │   │           │   ├── final_model_existing_f1
+│   │   │           │   ├── logreg_tuned_accuracy
+│   │   │           │   ├── logreg_tuned_auc
+│   │   │           │   └── logreg_tuned_f1
+│   │   │           ├── params
+│   │   │           │   └── selected_model
+│   │   │           └── tags
+│   │   │               ├── mlflow.source.git.commit
+│   │   │               ├── mlflow.source.name
+│   │   │               ├── mlflow.source.type
+│   │   │               └── mlflow.user
+│   │   ├── 882139380029118604
+│   │   │   ├── 12bf20b53f4d487d8d0ae12dd19754e4
+│   │   │   │   ├── artifacts
+│   │   │   │   ├── meta.yaml
+│   │   │   │   ├── metrics
+│   │   │   │   ├── outputs
+│   │   │   │   │   └── m-8f0753f602a84c6091f41b344d4dfe6d
+│   │   │   │   │       └── meta.yaml
+│   │   │   │   ├── params
+│   │   │   │   └── tags
+│   │   │   │       ├── mlflow.runName
+│   │   │   │       ├── mlflow.source.git.commit
+│   │   │   │       ├── mlflow.source.name
+│   │   │   │       ├── mlflow.source.type
+│   │   │   │       └── mlflow.user
+│   │   │   ├── edf249547e49481bb42f7ddd82d0bae6
+│   │   │   │   ├── artifacts
+│   │   │   │   ├── meta.yaml
+│   │   │   │   ├── metrics
+│   │   │   │   ├── outputs
+│   │   │   │   │   └── m-dca97ef30b064a19b92bd8517aa6ed09
+│   │   │   │   │       └── meta.yaml
+│   │   │   │   ├── params
+│   │   │   │   └── tags
+│   │   │   │       ├── mlflow.runName
+│   │   │   │       ├── mlflow.source.git.commit
+│   │   │   │       ├── mlflow.source.name
+│   │   │   │       ├── mlflow.source.type
+│   │   │   │       └── mlflow.user
+│   │   │   ├── meta.yaml
+│   │   │   └── models
+│   │   │       ├── m-8f0753f602a84c6091f41b344d4dfe6d
+│   │   │       │   ├── artifacts
+│   │   │       │   │   ├── conda.yaml
+│   │   │       │   │   ├── MLmodel
+│   │   │       │   │   ├── model.pkl
+│   │   │       │   │   ├── python_env.yaml
+│   │   │       │   │   └── requirements.txt
+│   │   │       │   ├── meta.yaml
+│   │   │       │   ├── metrics
+│   │   │       │   ├── params
+│   │   │       │   └── tags
+│   │   │       │       ├── mlflow.modelVersions
+│   │   │       │       ├── mlflow.source.git.commit
+│   │   │       │       ├── mlflow.source.name
+│   │   │       │       ├── mlflow.source.type
+│   │   │       │       └── mlflow.user
+│   │   │       └── m-dca97ef30b064a19b92bd8517aa6ed09
+│   │   │           ├── artifacts
+│   │   │           │   ├── conda.yaml
+│   │   │           │   ├── MLmodel
+│   │   │           │   ├── model.pkl
+│   │   │           │   ├── python_env.yaml
+│   │   │           │   └── requirements.txt
+│   │   │           ├── meta.yaml
+│   │   │           ├── metrics
+│   │   │           ├── params
+│   │   │           └── tags
+│   │   │               ├── mlflow.modelVersions
+│   │   │               ├── mlflow.source.git.commit
+│   │   │               ├── mlflow.source.name
+│   │   │               ├── mlflow.source.type
+│   │   │               └── mlflow.user
+│   │   ├── 961672619623640204
+│   │   │   ├── 6995d4d4c1114d9cb679da621574bd02
+│   │   │   │   ├── artifacts
+│   │   │   │   │   ├── drift_report.html
+│   │   │   │   │   └── drift_report.json
+│   │   │   │   ├── meta.yaml
+│   │   │   │   ├── metrics
+│   │   │   │   │   ├── psi_direction_id
+│   │   │   │   │   └── psi_stop_sequence
+│   │   │   │   ├── params
+│   │   │   │   └── tags
+│   │   │   │       ├── mlflow.runName
+│   │   │   │       ├── mlflow.source.git.commit
+│   │   │   │       ├── mlflow.source.name
+│   │   │   │       ├── mlflow.source.type
+│   │   │   │       └── mlflow.user
+│   │   │   ├── 7ac0555e92e74afaad5caed32fecd5d0
+│   │   │   │   ├── artifacts
+│   │   │   │   │   ├── drift_report.html
+│   │   │   │   │   └── drift_report.json
+│   │   │   │   ├── meta.yaml
+│   │   │   │   ├── metrics
+│   │   │   │   │   ├── psi_direction_id
+│   │   │   │   │   └── psi_stop_sequence
+│   │   │   │   ├── params
+│   │   │   │   └── tags
+│   │   │   │       ├── mlflow.runName
+│   │   │   │       ├── mlflow.source.git.commit
+│   │   │   │       ├── mlflow.source.name
+│   │   │   │       ├── mlflow.source.type
+│   │   │   │       └── mlflow.user
+│   │   │   └── meta.yaml
+│   │   └── models
+│   │       └── Charlie_MBTA_Model
+│   │           ├── meta.yaml
+│   │           ├── version-1
+│   │           │   └── meta.yaml
+│   │           └── version-2
+│   │               └── meta.yaml
+│   ├── models
+│   │   ├── best_logreg_tuned.joblib
+│   │   ├── final_model.joblib
+│   │   ├── logreg_tuned.joblib
+│   │   ├── model_lgbm.joblib
+│   │   ├── model_metadata.json
+│   │   └── reference_stats.json
+│   ├── readme.md
+│   ├── reports
+│   │   ├── bias_plot.html
+│   │   ├── bias_report.csv
+│   │   ├── drift_report.html
+│   │   ├── drift_report.json
+│   │   ├── fairness_by_direction.png
+│   │   ├── fairness_metrics.csv
+│   │   ├── lime_explanation.html
+│   │   ├── model_comparison.json
+│   │   ├── model_comparison.png
+│   │   ├── shap_importance.csv
+│   │   └── shap_summary.png
+│   └── screenshots
+│       ├── 01_train_baseline_model.png
+│       ├── 02_train_baseline_completed.png
+│       ├── 03_hyperparameter_tuning_completed.png
+│       ├── 04_bias_analysis_completed.png
+│       ├── 05_model_explainability_completed.png
+│       ├── 06_model_explainability_run2.png
+│       ├── 07_model_fairness_evaluation.png
+│       ├── 08_model_explainability_shap_lime.png
+│       ├── 09_model_drift_monitoring.png
+│       ├── 10_mlflow_home_after_drift.png
+│       ├── 11_drift_monitoring_run_overview.png
+│       ├── 12_model_selection_terminal_output.png
+│       ├── 13_model_registration_and_production.png
+│       ├── 14_mlflow_all_runs_overview.png
+│       ├── 15_baseline_lgbm_run_details.png
+│       └── 16_baseline_lgbm_model_metrics.png
+├── model_test_app.py
+├── models
+│   ├── final_model.joblib
+│   ├── logreg_tuned.joblib
+│   ├── model_lgbm.joblib
+│   └── reference_stats.json
+├── project_structure_full.txt
+├── README.md
+├── reports
+│   ├── bias_report.csv
+│   ├── drift_report.html
+│   ├── drift_report.json
+│   ├── lime_explanation.html
+│   ├── shap_importance.csv
+│   └── shap_summary.png
+└── requirements.txt
+
+452 directories, 2729 files

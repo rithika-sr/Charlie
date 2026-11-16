@@ -1,23 +1,21 @@
-# Dockerfile
-
 FROM python:3.12-slim
-
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
- && rm -rf /var/lib/apt/lists/*
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY requirements-api.txt .
-RUN pip install --no-cache-dir -r requirements-api.txt
+# Copy application files
+COPY app.py transit.py arrivals.py ./
+COPY templates/ templates/
+COPY static/ static/
 
-COPY . .
-
-ENV MODEL_PATH="models/final_model.joblib"
-ENV MODEL_VERSION="v1"
+# Environment variables
 ENV PORT=8080
+ENV PYTHONUNBUFFERED=1
 
-CMD ["uvicorn", "ml_src.api.app:app", "--host", "0.0.0.0", "--port", "8080"]
+EXPOSE 8080
+
+# Run with gunicorn
+CMD exec gunicorn --bind :$PORT --workers 2 --threads 4 --timeout 120 app:app

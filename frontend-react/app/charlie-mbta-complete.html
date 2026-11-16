@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charlie - MBTA Transit Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --mbta-red: #DA291C;
+            --mbta-orange: #ED8B00;
+            --mbta-blue: #003DA5;
+            --mbta-green: #00843D;
+            --mbta-silver: #7C878E;
+            --mbta-bus: #FFC72C;
+            --mbta-commuter: #80276C;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #F7F8FA;
+            color: #1A1A1A;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app { display: flex; height: 100vh; }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            background: #FFFFFF;
+            border-right: 1px solid #E0E0E0;
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100%;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar.open { transform: translateX(0); }
+        
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 999;
+        }
+        .sidebar-overlay.open { display: block; }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #E0E0E0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sidebar-header h2 { font-size: 18px; font-weight: 600; }
+        .sidebar-close {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: #F7F8FA;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        .sidebar-nav {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .sidebar-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            border: none;
+            background: #F7F8FA;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            text-align: left;
+        }
+        .sidebar-btn:hover { background: #EBEDF0; }
+        .sidebar-btn.active { background: var(--mbta-blue); color: white; }
+
+        /* Station Panel */
+        .station-panel {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .station-panel.active { display: flex; }
+
+        .station-search-box {
+            padding: 16px;
+            border-bottom: 1px solid #E0E0E0;
+        }
+        .station-search-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #E0E0E0;
+            border-radius: 10px;
+            font-size: 15px;
+            outline: none;
+        }
+        .station-search-input:focus { border-color: var(--mbta-blue); }
+
+        .station-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        .station-item {
+            padding: 14px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .station-item:hover { background: #F7F8FA; }
+        .station-name { font-weight: 600; font-size: 15px; }
+
+        /* Arrivals Panel */
+        .arrivals-panel {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .arrivals-panel.active { display: flex; }
+
+        .arrivals-header {
+            padding: 16px;
+            border-bottom: 1px solid #E0E0E0;
+        }
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border: none;
+            background: #F7F8FA;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+        .arrivals-station-name { font-size: 20px; font-weight: 700; }
+
+        .arrivals-list { flex: 1; overflow-y: auto; }
+
+        .route-group { border-bottom: 1px solid #E0E0E0; }
+        .route-header {
+            padding: 12px 16px;
+            font-weight: 700;
+            font-size: 14px;
+            color: white;
+        }
+        .route-header.red { background: var(--mbta-red); }
+        .route-header.orange { background: var(--mbta-orange); }
+        .route-header.blue { background: var(--mbta-blue); }
+        .route-header.green { background: var(--mbta-green); }
+        .route-header.silver { background: var(--mbta-silver); }
+        .route-header.bus { background: var(--mbta-bus); color: #000; }
+        .route-header.commuter { background: var(--mbta-commuter); }
+
+        .arrival-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid #F7F8FA;
+        }
+        .arrival-dest { font-weight: 600; font-size: 15px; }
+        .arrival-time { font-size: 15px; font-weight: 600; }
+        .arrival-time.arriving { color: var(--mbta-green); }
+
+        /* Main Content */
+        .main { flex: 1; display: flex; flex-direction: column; height: 100vh; }
+
+        /* Header */
+        .header {
+            background: #FFFFFF;
+            border-bottom: 1px solid #E0E0E0;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .menu-btn {
+            width: 44px;
+            height: 44px;
+            border: none;
+            background: #F7F8FA;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 20px;
+        }
+        .header-title { flex: 1; }
+        .header-title h1 { font-size: 22px; font-weight: 700; }
+        .header-title p { font-size: 13px; color: #5C5C5C; }
+        
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: #E8F5E9;
+            border-radius: 20px;
+        }
+        .status-badge.offline { background: #FFEBEE; }
+        .status-badge.offline span { color: #C62828; }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #4CAF50;
+            border-radius: 50%;
+        }
+        .status-badge.offline .status-dot { background: #F44336; }
+        .status-badge span { font-size: 13px; font-weight: 600; color: #2E7D32; }
+
+        /* Chat */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .message { max-width: 75%; display: flex; flex-direction: column; }
+        .message.user { align-self: flex-end; }
+        .message.bot { align-self: flex-start; }
+        
+        .message-content {
+            padding: 14px 18px;
+            border-radius: 16px;
+            font-size: 15px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+        .message.user .message-content {
+            background: var(--mbta-blue);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .message.bot .message-content {
+            background: #FFFFFF;
+            border: 1px solid #E0E0E0;
+            border-bottom-left-radius: 4px;
+        }
+        .message-time {
+            font-size: 11px;
+            color: #8A8A8A;
+            margin-top: 6px;
+            padding: 0 4px;
+        }
+        .message.user .message-time { text-align: right; }
+
+        .typing {
+            display: flex;
+            gap: 4px;
+            padding: 14px 18px;
+            background: #FFFFFF;
+            border: 1px solid #E0E0E0;
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+            width: fit-content;
+        }
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #8A8A8A;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-4px); }
+        }
+
+        /* Input */
+        .input-area {
+            background: #FFFFFF;
+            border-top: 1px solid #E0E0E0;
+            padding: 16px 24px;
+        }
+        .input-container { display: flex; gap: 12px; align-items: center; }
+        .chat-input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid #E0E0E0;
+            border-radius: 12px;
+            font-size: 15px;
+            outline: none;
+            font-family: inherit;
+        }
+        .chat-input:focus { border-color: var(--mbta-blue); }
+        
+        .voice-btn, .send-btn {
+            width: 48px;
+            height: 48px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 20px;
+        }
+        .voice-btn { background: #F7F8FA; }
+        .voice-btn:hover { background: #EBEDF0; }
+        .voice-btn.listening { background: var(--mbta-red); color: white; }
+        .send-btn { background: var(--mbta-blue); color: white; }
+        .send-btn:disabled { background: #E0E0E0; cursor: not-allowed; }
+
+        .loading { padding: 40px; text-align: center; color: #8A8A8A; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>Menu</h2>
+                <button class="sidebar-close" onclick="closeSidebar()">×</button>
+            </div>
+
+            <nav class="sidebar-nav" id="sidebarNav">
+                <button class="sidebar-btn active" onclick="showChat()">💬 Chat</button>
+                <button class="sidebar-btn" onclick="showStationSearch()">🔍 Search Station</button>
+                <button class="sidebar-btn" onclick="window.open('https://www.mbta.com/schedules/subway', '_blank')">🗺️ Transit Map</button>
+            </nav>
+
+            <!-- Station Search -->
+            <div class="station-panel" id="stationPanel">
+                <div class="station-search-box">
+                    <button class="back-btn" onclick="backToMenu()">← Back</button>
+                    <input type="text" class="station-search-input" id="stationSearchInput" 
+                           placeholder="Search stations..." oninput="filterStations()">
+                </div>
+                <div class="station-list" id="stationList"></div>
+            </div>
+
+            <!-- Arrivals Panel -->
+            <div class="arrivals-panel" id="arrivalsPanel">
+                <div class="arrivals-header">
+                    <button class="back-btn" onclick="backToStationSearch()">← Back</button>
+                    <div class="arrivals-station-name" id="arrivalsStationName">Station</div>
+                </div>
+                <div class="arrivals-list" id="arrivalsList"></div>
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <main class="main">
+            <header class="header">
+                <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+                <div class="header-title">
+                    <h1>Charlie</h1>
+                    <p>MBTA Real-Time Transit Assistant</p>
+                </div>
+                <div class="status-badge" id="statusBadge">
+                    <div class="status-dot"></div>
+                    <span id="statusText">Checking...</span>
+                </div>
+            </header>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="message bot">
+                    <div class="message-content">Welcome to Charlie, your MBTA real-time transit assistant.
+
+I can help you with:
+- Real-time train and bus arrivals
+- Route planning between stations
+- All MBTA lines: Red, Orange, Blue, Green, Silver, Commuter Rail, Bus, Ferry
+
+Try saying: "I'm at Ruggles, next train to Forest Hills"</div>
+                    <div class="message-time">Now</div>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <div class="input-container">
+                    <input type="text" class="chat-input" id="chatInput" 
+                           placeholder="I'm at Ruggles, next train to Forest Hills..."
+                           onkeypress="if(event.key==='Enter')sendMessage()">
+                    <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()">🎤</button>
+                    <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+<script>
+// ============================================================
+// CONFIGURATION - CHANGE THIS TO YOUR BACKEND URL
+// ============================================================
+const API_URL = 'http://localhost:8000';
+
+// ============================================================
+// STATIONS DATA
+// ============================================================
+const STATIONS = [
+    { id: 'place-rugg', name: 'Ruggles' },
+    { id: 'place-pktrm', name: 'Park Street' },
+    { id: 'place-dwnxg', name: 'Downtown Crossing' },
+    { id: 'place-sstat', name: 'South Station' },
+    { id: 'place-north', name: 'North Station' },
+    { id: 'place-harsq', name: 'Harvard' },
+    { id: 'place-kencl', name: 'Kenmore' },
+    { id: 'place-coecl', name: 'Copley' },
+    { id: 'place-gover', name: 'Government Center' },
+    { id: 'place-state', name: 'State' },
+    { id: 'place-forhl', name: 'Forest Hills' },
+    { id: 'place-ogmnl', name: 'Oak Grove' },
+    { id: 'place-alfcl', name: 'Alewife' },
+    { id: 'place-asmnl', name: 'Ashmont' },
+    { id: 'place-brntn', name: 'Braintree' },
+    { id: 'place-wondl', name: 'Wonderland' },
+    { id: 'place-bbsta', name: 'Back Bay' },
+    { id: 'place-hymnl', name: 'Hynes Convention Center' },
+    { id: 'place-lake', name: 'Boston College' },
+    { id: 'place-river', name: 'Riverside' },
+];
+
+let recognition = null;
+let isListening = false;
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    checkApiStatus();
+    renderStationList();
+    initVoice();
+});
+
+async function checkApiStatus() {
+    const badge = document.getElementById('statusBadge');
+    const text = document.getElementById('statusText');
+    
+    try {
+        const response = await fetch(`${API_URL}/health`);
+        if (response.ok) {
+            badge.classList.remove('offline');
+            text.textContent = 'Connected';
+        } else {
+            badge.classList.add('offline');
+            text.textContent = 'Offline';
+        }
+    } catch {
+        badge.classList.add('offline');
+        text.textContent = 'Offline';
+    }
+}
+
+function initVoice() {
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            document.getElementById('chatInput').value = transcript;
+            stopListening();
+            sendMessage();
+        };
+
+        recognition.onerror = () => stopListening();
+        recognition.onend = () => stopListening();
+    }
+}
+
+// ============================================================
+// SIDEBAR
+// ============================================================
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('open');
+}
+
+function showChat() {
+    closeSidebar();
+}
+
+function showStationSearch() {
+    document.getElementById('sidebarNav').style.display = 'none';
+    document.getElementById('stationPanel').classList.add('active');
+    document.getElementById('arrivalsPanel').classList.remove('active');
+}
+
+function backToMenu() {
+    document.getElementById('sidebarNav').style.display = 'flex';
+    document.getElementById('stationPanel').classList.remove('active');
+}
+
+function backToStationSearch() {
+    document.getElementById('arrivalsPanel').classList.remove('active');
+    document.getElementById('stationPanel').classList.add('active');
+}
+
+function renderStationList(filter = '') {
+    const container = document.getElementById('stationList');
+    const filtered = STATIONS.filter(s => s.name.toLowerCase().includes(filter.toLowerCase()));
+    
+    container.innerHTML = filtered.map(station => `
+        <div class="station-item" onclick="loadStationArrivals('${station.id}', '${station.name}')">
+            <div class="station-name">${station.name}</div>
+        </div>
+    `).join('');
+}
+
+function filterStations() {
+    const query = document.getElementById('stationSearchInput').value;
+    renderStationList(query);
+}
+
+async function loadStationArrivals(stopId, stationName) {
+    document.getElementById('stationPanel').classList.remove('active');
+    document.getElementById('arrivalsPanel').classList.add('active');
+    document.getElementById('arrivalsStationName').textContent = stationName;
+    document.getElementById('arrivalsList').innerHTML = '<div class="loading">Loading arrivals...</div>';
+
+    try {
+        const response = await fetch(`${API_URL}/station/${stopId}`);
+        const data = await response.json();
+        renderArrivals(data.routes || []);
+    } catch {
+        document.getElementById('arrivalsList').innerHTML = '<div class="loading">Error loading arrivals. Is the backend running?</div>';
+    }
+}
+
+function renderArrivals(routes) {
+    const container = document.getElementById('arrivalsList');
+    
+    if (routes.length === 0) {
+        container.innerHTML = '<div class="loading">No upcoming arrivals</div>';
+        return;
+    }
+
+    container.innerHTML = routes.map(route => {
+        const colorClass = getRouteColorClass(route.route_name, route.route_type);
+        return `
+            <div class="route-group">
+                <div class="route-header ${colorClass}">${route.route_name}</div>
+                ${route.arrivals.slice(0, 5).map(arr => `
+                    <div class="arrival-item">
+                        <div>
+                            <div class="arrival-dest">${arr.headsign}</div>
+                        </div>
+                        <div class="arrival-time ${arr.minutes_away < 1 ? 'arriving' : ''}">
+                            ${arr.minutes_away < 1 ? 'Arriving' : arr.minutes_away + ' min'} (${arr.arrival_time})
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }).join('');
+}
+
+function getRouteColorClass(name, type) {
+    const n = name.toLowerCase();
+    if (n.includes('red')) return 'red';
+    if (n.includes('orange')) return 'orange';
+    if (n.includes('blue')) return 'blue';
+    if (n.includes('green')) return 'green';
+    if (n.includes('silver')) return 'silver';
+    if (n.includes('commuter') || type === 2) return 'commuter';
+    if (type === 3) return 'bus';
+    return 'orange';
+}
+
+// ============================================================
+// CHAT
+// ============================================================
+async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    if (!message) return;
+
+    addMessage(message, 'user');
+    input.value = '';
+    document.getElementById('sendBtn').disabled = true;
+
+    showTyping();
+
+    try {
+        const response = await fetch(`${API_URL}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message })
+        });
+
+        const data = await response.json();
+        hideTyping();
+        addMessage(data.reply || 'Sorry, I couldn\'t process that.', 'bot');
+    } catch {
+        hideTyping();
+        addMessage('Connection error. Make sure the backend is running at ' + API_URL, 'bot');
+    }
+
+    document.getElementById('sendBtn').disabled = false;
+}
+
+function addMessage(text, type) {
+    const container = document.getElementById('chatMessages');
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    const div = document.createElement('div');
+    div.className = `message ${type}`;
+    div.innerHTML = `
+        <div class="message-content">${text}</div>
+        <div class="message-time">${time}</div>
+    `;
+    
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function showTyping() {
+    const container = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = 'message bot';
+    div.id = 'typingIndicator';
+    div.innerHTML = `
+        <div class="typing">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+        </div>
+    `;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function hideTyping() {
+    const indicator = document.getElementById('typingIndicator');
+    if (indicator) indicator.remove();
+}
+
+// ============================================================
+// VOICE
+// ============================================================
+function toggleVoice() {
+    if (!recognition) {
+        alert('Voice recognition not supported. Use Chrome or Edge.');
+        return;
+    }
+
+    if (isListening) {
+        recognition.stop();
+        stopListening();
+    } else {
+        recognition.start();
+        startListening();
+    }
+}
+
+function startListening() {
+    isListening = true;
+    document.getElementById('voiceBtn').classList.add('listening');
+}
+
+function stopListening() {
+    isListening = false;
+    document.getElementById('voiceBtn').classList.remove('listening');
+}
+</script>
+</body>
+</html>
