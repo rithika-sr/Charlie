@@ -85,3 +85,10 @@ test('journey actions: exact resolved endpoints for refresh, reverse and picks',
   assert.equal(actionLabel(journeyAction(j, 'refresh')), 'Refresh: Chiswick Road → Harvard');
   assert.equal(journeyAction(j, 'planner'), null);
 });
+
+test('chat layout: the message scroller contains absolutely positioned labels', async () => {
+  // Without this, .sr-only spans in line badges stretched the page on phones and the composer drifted.
+  const { readFileSync } = await import('node:fs');
+  const css = readFileSync(new URL('../../static/css/app.css', import.meta.url), 'utf8');
+  assert.match(css, /\.chat__scroll\s*\{[^}]*position:\s*relative/);
+});

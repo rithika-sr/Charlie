@@ -570,7 +570,9 @@ body.panel-open .map-tool--label { width: 44px; padding: 0; }
    ========================================================================== */
 body[data-route="ai"] .view { padding: 0; max-width: none; }
 .chat { display: flex; flex-direction: column; height: calc(100dvh - var(--command-h)); }
-.chat__scroll { flex: 1; overflow-y: auto; }
+/* position: relative keeps absolutely positioned descendants (e.g. .sr-only labels in line
+   badges) inside this scroller; otherwise they stretch the page and the composer drifts on phones. */
+.chat__scroll { position: relative; flex: 1; overflow-y: auto; }
 .chat__inner { max-width: 760px; margin: 0 auto; padding: var(--s8) var(--s6) var(--s4); }
 .chat__intro { text-align: center; padding: var(--s8) 0 var(--s6); }
 .chat__mark { width: 52px; height: 52px; border-radius: 16px; margin: 0 auto var(--s4); display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #312E81, #1E3A8A); color: #DDD6FE; }
