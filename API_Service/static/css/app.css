@@ -740,3 +740,18 @@ body[data-route="ai"] .view { padding: 0; max-width: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+/* Charlie AI journey cards */
+.chat__toolbar { display: flex; justify-content: flex-end; min-height: 0; }
+.chat__toolbar [hidden] { display: none; }
+.journey .trip-card { background: var(--surface-2, var(--surface)); }
+.journey__ends { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-weight: 600; color: var(--text); }
+.journey__caveats { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-sm); color: var(--text-2); }
+.journey__caveats li { display: flex; gap: 6px; align-items: flex-start; }
+.journey__caveats .icon { flex: none; margin-top: 2px; }
+.journey__more > summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; padding: 6px 0; font-size: var(--fs-sm); color: var(--accent, var(--text-2)); }
+.journey__more > summary::-webkit-details-marker { display: none; }
+.journey__more[open] > summary .icon { transform: rotate(180deg); }
+.journey__more .stack { margin-top: var(--s2); }
+.journey .trip-notice { margin-bottom: 0; }
+.composer [type="submit"]:disabled { opacity: 0.55; cursor: progress; }

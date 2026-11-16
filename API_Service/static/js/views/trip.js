@@ -13,6 +13,7 @@ const gate = createRequestGate();
 let lastQuery = null;
 let lastRoutes = null;
 let lastNotices = [];
+let lastAlertsChecked = true;
 
 /** Map a trip step's display name to MBTA route ids, for alert matching. */
 export function routeIdsForStep(step) {
@@ -124,7 +125,7 @@ function noticeHtml(n) {
   </div>`;
 }
 
-function renderResults(el, unsorted, notices = []) {
+function renderResults(el, unsorted, notices = [], alertsChecked = true) {
   const routes = sortTrips(unsorted, sortBy);
   const legacyAlerts = store.get('alerts') || [];
   const badges = tripBadges(routes);
@@ -146,10 +147,11 @@ function renderResults(el, unsorted, notices = []) {
       }
       return tripOptionCard(r, i, { badges: badges[i], alerts: affected, note: arrivalNote(r, routes) });
     }).join('')}</div>
+    ${alertsChecked ? '' : `<p class="fine-print" role="note">${icon('alert', { size: 14 })}Service alerts couldn’t be checked for these options, so disruptions may not be shown.</p>`}
     <p class="fine-print">${icon('info', { size: 14 })}Journey times come from the routing service and are estimates. Fares are estimated. Check alerts before you travel.</p>`;
   el.querySelectorAll('[data-sort]').forEach(btn => btn.addEventListener('click', () => {
     sortBy = btn.dataset.sort;
-    renderResults(el, unsorted, notices);
+    renderResults(el, unsorted, notices, alertsChecked);
     el.querySelector(`[data-sort="${sortBy}"]`)?.focus();
   }));
 }
@@ -185,6 +187,31 @@ async function search(resultsEl, q, formApi) {
     resultsEl.innerHTML = emptyState({ icon: 'pin', title: fields.length > 1 ? 'Neither place was found' : `${fields[0] === 'origin' ? 'Starting point' : 'Destination'} not found`, body: 'Fix the highlighted field and search again.' });
     return;
   }
+  if (data.code === 'ambiguous') {
+    const fields = data.ambiguous || [];
+    for (const f of fields) {
+      const place = f === 'origin' ? q.origin.name : q.destination.name;
+      formApi?.fieldError(f, `“${place}” matches more than one station. Pick one below.`);
+    }
+    resultsEl.innerHTML = `<div class="state state--empty">${icon('pin', { size: 28 })}<h3>Which station?</h3>${fields.map(f => `
+      <p>${f === 'origin' ? 'Starting point' : 'Destination'}:</p>
+      <div class="chips" role="group" aria-label="Choose the ${f === 'origin' ? 'starting point' : 'destination'}">${(data.candidates?.[f] || []).map(n =>
+        `<button type="button" class="chip chip--btn" data-pick-field="${f}" data-pick-name="${e(n)}">${icon('pin', { size: 14 })}${e(n)}</button>`).join('')}</div>`).join('')}</div>`;
+    resultsEl.querySelectorAll('[data-pick-field]').forEach(btn => btn.addEventListener('click', () => {
+      const s = (store.get('stations') || []).find(x => x.name === btn.dataset.pickName);
+      const place = s ? { name: s.name, id: s.id, lat: s.lat, lon: s.lon } : { name: btn.dataset.pickName };
+      if (btn.dataset.pickField === 'origin') formApi?.setOrigin(place); else formApi?.setDestination(place);
+      search(resultsEl, { ...q, [btn.dataset.pickField]: place }, formApi);
+    }));
+    resultsEl.querySelector('[data-pick-field]')?.focus();
+    return;
+  }
+  if (data.code === 'same_place') {
+    formApi?.fieldError('destination', 'This is the same station as the starting point.');
+    formApi?.focusField('destination');
+    resultsEl.innerHTML = emptyState({ icon: 'route', title: 'Start and destination are the same', body: 'Choose a different destination.' });
+    return;
+  }
   if (!data.routes || !data.routes.length) {
     resultsEl.innerHTML = `${(data.notices || []).map(noticeHtml).join('')}${emptyState({ icon: 'route', title: 'No transit options for this trip right now', body: 'Both places were found, but the routing service returned no itineraries. Service may have ended for the night, or try a nearby station.' })}`;
     return;
@@ -192,7 +219,8 @@ async function search(resultsEl, q, formApi) {
   store.rememberTrip({ origin: q.origin, destination: q.destination });
   lastRoutes = data.routes;
   lastNotices = data.notices || [];
-  renderResults(resultsEl, data.routes, lastNotices);
+  lastAlertsChecked = data.alerts_checked !== false;
+  renderResults(resultsEl, data.routes, lastNotices, lastAlertsChecked);
 }
 
 /** An endpoint changed: drop in-flight work and any results that no longer match the form. */
@@ -238,7 +266,7 @@ export const tripView = {
     }));
     if (pending.origin && pending.destination) search(results, { origin: pending.origin, destination: pending.destination }, formApi);
     else if (pending.origin || pending.destination) form.querySelector(pending.origin ? '[name="destination"]' : '[name="origin"]').focus();
-    else if (lastQuery && lastRoutes) { results.setAttribute('data-has-results', ''); renderResults(results, lastRoutes, lastNotices); }
+    else if (lastQuery && lastRoutes) { results.setAttribute('data-has-results', ''); renderResults(results, lastRoutes, lastNotices, lastAlertsChecked); }
   },
   leave() { gate.abort(); },
 };
