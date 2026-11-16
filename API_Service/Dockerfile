@@ -7,7 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application files
-COPY app.py transit.py arrivals.py places.py ./
+COPY app.py transit.py arrivals.py places.py journey.py ./
 COPY templates/ templates/
 COPY static/ static/
 

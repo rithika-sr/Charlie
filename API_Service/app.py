@@ -20,6 +20,8 @@ from openai import OpenAI
 
 import transit
 import arrivals
+import journey
+import places
 
 # Load Environment Variables
 load_dotenv()
@@ -1845,9 +1847,9 @@ GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
 @app.route('/api/trip-planner', methods=['POST'])
 def plan_trip():
     """
-    Plan a trip. Google Maps Directions when a key is configured, else the free
-    Transitous (MOTIS) router. Each place is resolved first, so the response can say
-    which field couldn't be found, versus no itineraries, versus a routing failure.
+    Plan a trip with the shared journey service (journey.py), the same one Charlie AI
+    uses. Each place is resolved first, so the response can say which field couldn't
+    be found or is ambiguous, versus no itineraries, versus a routing failure.
     """
     data = request.get_json(silent=True) or {}
     origin = (data.get('origin') or '').strip()
@@ -1855,45 +1857,42 @@ def plan_trip():
     if not origin or not destination:
         return jsonify({"error": "Origin and destination are required"}), 400
 
-    origin_station = station_by_id(data.get('origin_id')) or find_station_data(origin)
-    dest_station = station_by_id(data.get('dest_id')) or find_station_data(destination)
-    origin_coords = data.get('origin_coords') or (f"{origin_station['lat']},{origin_station['lon']}" if origin_station else None)
-    dest_coords = data.get('dest_coords') or (f"{dest_station['lat']},{dest_station['lon']}" if dest_station else None)
+    result = plan_journey(origin, destination, origin_id=data.get('origin_id'), dest_id=data.get('dest_id'),
+                          origin_coords=data.get('origin_coords'), dest_coords=data.get('dest_coords'))
+    body = {**result, "origin": origin, "destination": destination,
+            "endpoints": {"origin": result["origin"], "destination": result["destination"]}}
+    if result["code"] == "unresolved":
+        body["message"] = "We couldn’t find that place in the Boston area."
+    if result["code"] == "routing_unavailable":
+        body["error"] = result.get("message") or "The trip planning service is unavailable right now."
+        return jsonify(body), 502
+    return jsonify(body)
 
-    routes = get_google_directions(origin_coords or f"{origin}, Boston, MA",
-                                   dest_coords or f"{destination}, Boston, MA", origin, destination)
-    if not routes:
-        try:
-            from_place = origin_coords or _resolve_place(origin)
-            to_place = dest_coords or _resolve_place(destination)
-        except RoutingError as e:
-            return jsonify({"error": str(e), "code": "routing_unavailable"}), 502
-        unresolved = [f for f, p in (("origin", from_place), ("destination", to_place)) if not p]
-        if unresolved:
-            return jsonify({"origin": origin, "destination": destination, "routes": [], "code": "unresolved",
-                            "unresolved": unresolved,
-                            "message": "We couldn’t find that place in the Boston area."})
-        dest_label = dest_station["name"] if dest_station else destination
-        try:
-            routes = get_transitous_directions(from_place, to_place, dest_label)
-        except RoutingError as e:
-            return jsonify({"error": str(e), "code": "routing_unavailable"}), 502
 
-    notices = []
-    try:
-        notices = annotate_trip_alerts(routes, origin_station, dest_station)
-    except Exception as e:
-        print(f"Trip alert matching skipped: {e}")
-    for r in routes:
-        r.pop("_legs", None)
+def journey_providers():
+    """Routing services in fallback order: Google Directions when a key is configured,
+    then the free Transitous (MOTIS) router. Chat and the planner both use this list."""
+    providers = []
+    if GOOGLE_MAPS_API_KEY:
+        def google(o, d):
+            where = lambda ep: f"{ep['lat']},{ep['lon']}" if ep.get('lat') is not None else f"{ep['query']}, Boston, MA"
+            return get_google_directions(where(o), where(d), o['name'], d['name'])
+        providers.append(("google", google))
 
-    return jsonify({
-        "origin": origin,
-        "destination": destination,
-        "routes": routes,
-        "notices": notices,
-        "code": "ok" if routes else "no_itineraries",
-    })
+    def transitous_provider(o, d):
+        missing = [ep for ep in (o, d) if ep.get('lat') is None]
+        if missing:
+            raise RoutingError("The place lookup service didn’t respond, so this trip can’t be routed right now.")
+        return get_transitous_directions(f"{o['lat']},{o['lon']}", f"{d['lat']},{d['lon']}", d['name'])
+    providers.append(("transitous", transitous_provider))
+    return providers
+
+
+def plan_journey(origin, destination, **endpoint_hints):
+    """The one journey service: place resolution, provider fallbacks and disruption matching."""
+    return journey.plan(origin, destination, stations=STATION_DATA, aliases=STATION_ALIASES,
+                        station_by_id=station_by_id, geocode=_resolve_place, providers=journey_providers(),
+                        annotate=annotate_trip_alerts, now=get_now(), **endpoint_hints)
 
 
 def station_by_id(stop_id):
@@ -1960,7 +1959,8 @@ def annotate_trip_alerts(routes, origin_station, dest_station):
 def get_google_directions(origin, destination, origin_name, dest_name):
     """
     Get transit directions from Google Maps Directions API.
-    Returns multiple route alternatives with all transit modes.
+    Returns multiple route alternatives with all transit modes; [] when Google found
+    no transit route, RoutingError when the service failed.
     """
     if not GOOGLE_MAPS_API_KEY:
         return []
@@ -1978,9 +1978,11 @@ def get_google_directions(origin, destination, origin_name, dest_name):
         response = requests.get(url, params=params, timeout=15)
         data = response.json()
         
+        if data.get('status') in ('ZERO_RESULTS', 'NOT_FOUND'):
+            return []
         if data.get('status') != 'OK':
             print(f"Google Maps API error: {data.get('status')} - {data.get('error_message', '')}")
-            return []
+            raise RoutingError(f"Google Directions is unavailable ({data.get('status')}).")
         
         routes = []
         
@@ -2095,11 +2097,11 @@ def get_google_directions(origin, destination, origin_name, dest_name):
         
         return routes[:6]  # Return top 6 routes
         
+    except RoutingError:
+        raise
     except Exception as e:
         print(f"Google Directions API error: {e}")
-        import traceback
-        traceback.print_exc()
-        return []
+        raise RoutingError("Google Directions didn’t respond.") from e
 
 
 def get_transit_type(vehicle_type, line_name):
@@ -2180,8 +2182,7 @@ TRANSITOUS_URL = "https://api.transitous.org/api"
 TRANSITOUS_HEADERS = {"User-Agent": "charlie-mbta-trip-planner"}
 
 
-class RoutingError(RuntimeError):
-    pass
+RoutingError = journey.RoutingError
 
 
 SERVICE_RADIUS_KM = 80  # MBTA service area, measured from downtown Boston
@@ -2388,26 +2389,6 @@ def get_transitous_directions(from_place, to_place, dest_name=None):
         })
 
     return routes[:6]
-
-
-def find_station_data(query):
-    """Find station data by name"""
-    if not query:
-        return None
-    
-    query_lower = query.lower().strip()
-    
-    # Try exact match first
-    for name, data in STATION_DATA.items():
-        if name.lower() == query_lower:
-            return {"name": name, **data}
-    
-    # Try partial match
-    for name, data in STATION_DATA.items():
-        if query_lower in name.lower():
-            return {"name": name, **data}
-    
-    return None
 
 
 if __name__ == '__main__':
