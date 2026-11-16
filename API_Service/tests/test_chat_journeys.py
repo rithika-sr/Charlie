@@ -283,3 +283,19 @@ def test_alerts_question_with_empty_feed_is_phrased_as_what_the_feed_says(client
 def test_greeting_without_llm_is_short_help(client, services):
     reply = ask(client, "hello")["reply"]
     assert reply.startswith("Hi!") and "basic mode" not in reply
+
+
+def test_requirements_survive_a_clarification(client, services):
+    first = ask(client, "park to hynes by 5pm")
+    assert first["journey"]["code"] == "ambiguous" and first["journey"]["requirements"]["time"] == "by 5pm"
+    typed = ask(client, "Park Street", first["context"])["journey"]
+    assert typed["code"] == "ok" and [c["kind"] for c in typed["caveats"]] == ["time"]
+    picked = client.post("/api/chat", json={"action": {"type": "trip", "kind": "pick", "origin": {"name": "Park Street"},
+                                                       "destination": first["journey"]["request"]["destination"],
+                                                       "requirements": first["journey"]["requirements"]}}).get_json()
+    assert [c["kind"] for c in picked["journey"]["caveats"]] == ["time"]
+
+
+def test_action_requirements_are_sanitized():
+    r = assistant.sanitize_requirements({"time": "x" * 500, "accessibility": 5, "sort": "drop table"})
+    assert len(r["time"]) == 60 and r["accessibility"] is None and r["sort"] is None

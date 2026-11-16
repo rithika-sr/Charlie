@@ -997,6 +997,8 @@ def trip_response(user_msg, req, origin=None, destination=None):
     prev = ctx.get("trip") or {}
     pending = ctx.get("pending") or {}
     requirements = req.get("requirements") or {}
+    if req.get("fill"):   # answering "which station?" keeps what the question asked for
+        requirements = assistant.merge_requirements(requirements, pending.get("requirements"))
     o, d = origin, destination
     if not (o or d):
         if req.get("refresh"):
@@ -1025,8 +1027,9 @@ def trip_response(user_msg, req, origin=None, destination=None):
         reply = ("Where are you starting from? Type a station or address, or share your location."
                  if field == "origin" else "Where do you want to go?")
         remember(user_msg, reply)
-        return {"reply": reply, "journey": {"code": "needs_" + field, "request": {"origin": o, "destination": d}},
-                "context": context_stamp({**base, "pending": {"field": field, "other": o or d}})}
+        return {"reply": reply, "journey": {"code": "needs_" + field, "request": {"origin": o, "destination": d},
+                                            "requirements": requirements},
+                "context": context_stamp({**base, "pending": {"field": field, "other": o or d, "requirements": requirements}})}
 
     result = _plan_endpoints(o, d)
     sort = requirements.get("sort") or "arrival"
@@ -1035,7 +1038,7 @@ def trip_response(user_msg, req, origin=None, destination=None):
     reply = assistant.journey_reply(result, requirements, sort)
     remember(user_msg, reply)
     request_eps = {"origin": o, "destination": d}
-    journey_card = {**result, "sort": sort, "request": request_eps,
+    journey_card = {**result, "sort": sort, "request": request_eps, "requirements": requirements,
                     "caveats": assistant.caveats_for(result, requirements, location_origin)}
 
     code = result["code"]
@@ -1045,7 +1048,8 @@ def trip_response(user_msg, req, origin=None, destination=None):
     else:
         field = (result.get("ambiguous") or result.get("unresolved") or ["destination"])[0]
         other_field = "destination" if field == "origin" else "origin"
-        context = {**base, "pending": {"field": field, "other": _remembered(result[other_field]) or request_eps[other_field]}}
+        context = {**base, "pending": {"field": field, "other": _remembered(result[other_field]) or request_eps[other_field],
+                                       "requirements": requirements}}
     return {"reply": reply, "journey": journey_card, "context": context_stamp(context)}
 
 
@@ -1080,7 +1084,9 @@ def chat_action(action):
     if not o or not d:
         return None
     label = {"refresh": "Refresh this trip", "reverse": "Return trip"}.get(action.get("kind"), f"{o['name']} to {d['name']}")
-    return trip_response(label, {"requirements": {"sort": action.get("sort") if action.get("sort") in assistant.SORT_CHAINS else None}}, o, d)
+    requirements = assistant.sanitize_requirements(action.get("requirements"))
+    requirements["sort"] = requirements["sort"] or (action.get("sort") if action.get("sort") in assistant.SORT_CHAINS else None)
+    return trip_response(label, {"requirements": requirements}, o, d)
 
 
 def process_chat_message(user_msg):

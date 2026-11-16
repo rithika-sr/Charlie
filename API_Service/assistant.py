@@ -179,6 +179,24 @@ def _endpoint(value):
     return ep
 
 
+def sanitize_requirements(raw):
+    """Requirements carried by a card action or a pending question: short phrases only."""
+    raw = raw if isinstance(raw, dict) else {}
+    out = {"time": None, "accessibility": None, "sort": None}
+    for k in ("time", "accessibility"):
+        if isinstance(raw.get(k), str) and raw[k].strip():
+            out[k] = raw[k].strip()[:60]
+    if raw.get("sort") in ("arrival", "duration", "transfers", "walking"):
+        out["sort"] = raw["sort"]
+    return out
+
+
+def merge_requirements(new, old):
+    """A follow-up keeps earlier requirements unless it states its own."""
+    old = old or {}
+    return {k: (new or {}).get(k) or old.get(k) for k in ("time", "accessibility", "sort")}
+
+
 def sanitize_context(raw, now=None):
     """The browser keeps each user's context and sends it back; accept only known
     shapes, and drop it entirely once it is older than CONTEXT_TTL_SECONDS."""
@@ -199,7 +217,8 @@ def sanitize_context(raw, now=None):
             ctx["trip"] = {"origin": o, "destination": d}
     pending = raw.get("pending")
     if isinstance(pending, dict) and pending.get("field") in ("origin", "destination"):
-        ctx["pending"] = {"field": pending["field"], "other": _endpoint(pending.get("other"))}
+        ctx["pending"] = {"field": pending["field"], "other": _endpoint(pending.get("other")),
+                          "requirements": sanitize_requirements(pending.get("requirements"))}
     if isinstance(at, (int, float)) and not isinstance(at, bool):
         ctx["at"] = at
     return ctx

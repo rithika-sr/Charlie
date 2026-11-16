@@ -123,16 +123,18 @@ export function journeyCardHtml(j, i, { stations = [] } = {}) {
 export function journeyAction(j, kind, { field, name, location } = {}) {
   const { origin, destination } = journeyEndpoints(j);
   const sort = j.sort && j.sort !== 'arrival' ? j.sort : undefined;
-  if (kind === 'refresh' && origin && destination) return { type: 'trip', kind, origin, destination, sort };
-  if (kind === 'reverse' && origin && destination) return { type: 'trip', kind, origin: destination, destination: origin, sort };
+  // Keep what the rider asked for ("by 5pm", "step-free"), so the reply still says it wasn't applied.
+  const extra = { sort, ...(j.requirements ? { requirements: j.requirements } : {}) };
+  if (kind === 'refresh' && origin && destination) return { type: 'trip', kind, origin, destination, ...extra };
+  if (kind === 'reverse' && origin && destination) return { type: 'trip', kind, origin: destination, destination: origin, ...extra };
   if ((kind === 'pick' || kind === 'similar') && name) {
     const other = field === 'origin' ? destination : origin;
     if (!other) return null;
     const chosen = { name };
-    return field === 'origin' ? { type: 'trip', kind, origin: chosen, destination: other } : { type: 'trip', kind, origin: other, destination: chosen };
+    return field === 'origin' ? { type: 'trip', kind, origin: chosen, destination: other, ...extra } : { type: 'trip', kind, origin: other, destination: chosen, ...extra };
   }
   if (kind === 'locate' && location && destination) {
-    return { type: 'trip', kind, origin: { name: 'Your location', lat: location.lat, lon: location.lon }, destination };
+    return { type: 'trip', kind, origin: { name: 'Your location', lat: location.lat, lon: location.lon }, destination, ...extra };
   }
   return null;
 }
