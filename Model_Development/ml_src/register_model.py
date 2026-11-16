@@ -6,6 +6,7 @@ import mlflow
 import mlflow.sklearn
 
 from Model_Development.ml_src.utils.logging import get_logger
+from Model_Development.ml_src.utils.mlflow_models import log_sklearn_model
 
 logger = get_logger("register_model")
 
@@ -40,11 +41,7 @@ def register_model_with_mlflow(model_path):
         logger.info("📦 Logging model to MLflow registry…")
 
         # Log & register model
-        mlflow.sklearn.log_model(
-            sk_model=model,
-            artifact_path="model",
-            registered_model_name=MODEL_NAME
-        )
+        log_sklearn_model(model, "model", registered_model_name=MODEL_NAME)
 
         logger.info("✅ Model logged to MLflow registry")
 

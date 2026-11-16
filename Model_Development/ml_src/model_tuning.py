@@ -16,6 +16,7 @@ from imblearn.over_sampling import SMOTE
 
 from Model_Development.ml_src.data_loader import DataPaths
 from Model_Development.ml_src.utils.logging import get_logger
+from Model_Development.ml_src.utils.mlflow_models import log_sklearn_model
 from Model_Development.ml_src.model_train import prepare_data
 
 logger = get_logger("model_tuning")
@@ -114,7 +115,7 @@ def train_and_log():
     with mlflow.start_run(run_name="logreg_tuned"):
         mlflow.log_params(grid.best_params_)
         mlflow.log_metrics(metrics)
-        mlflow.sklearn.log_model(best_model, artifact_path="tuned_logreg")
+        log_sklearn_model(best_model, "tuned_logreg")
 
         # ------------------------------
         # Save model to correct directory

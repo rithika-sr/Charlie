@@ -20,6 +20,7 @@ from lightgbm import LGBMClassifier
 
 from Model_Development.ml_src.data_loader import DataPaths
 from Model_Development.ml_src.utils.logging import get_logger
+from Model_Development.ml_src.utils.mlflow_models import log_sklearn_model
 
 logger = get_logger("train_model")
 
@@ -120,7 +121,7 @@ def main():
         # Log metrics + params
         mlflow.log_params(model.get_params())
         mlflow.log_metrics(metrics)
-        mlflow.sklearn.log_model(model, "baseline_lgbm_model")
+        log_sklearn_model(model, "baseline_lgbm_model")
 
         # -------------------------------
         # SAVE MODEL (CORRECT DIRECTORY)
