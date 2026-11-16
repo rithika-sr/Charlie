@@ -22,6 +22,9 @@ const SUGGESTIONS = [
 let recognition = null;
 let listening = false;
 let sending = false;
+// main.js reuses one container for every view, so listeners on it must be removed on
+// leave; otherwise each visit adds another and buttons fire once per visit.
+let listeners = null;
 
 /** Stations and subway lines mentioned in a reply, for quick-action chips. */
 export function mentions(text, stations) {
@@ -224,6 +227,8 @@ export const assistantView = {
       input.value = '';
       send(el, text);
     });
+    listeners?.abort();
+    listeners = new AbortController();
     el.addEventListener('click', ev => {
       const t = ev.target.closest('[data-suggest],[data-open-station],[data-speak],[data-retry],[data-journey-action],[data-reset]');
       if (!t) return;
@@ -235,16 +240,17 @@ export const assistantView = {
       if (t.dataset.retry) {
         const chat = store.get('chat');
         const msg = chat.messages[Number(t.dataset.retry)];
+        if (!msg || sending) return;
         chat.messages.splice(Number(t.dataset.retry), 1);
         const lastUser = chat.messages.length - 1;
         if (chat.messages[lastUser]?.role === 'user') chat.messages.splice(lastUser, 1);
         send(el, msg.retry, { action: msg.retryAction || null });
       }
-    });
+    }, { signal: listeners.signal });
     el.querySelector('[data-loc]').addEventListener('click', () => requestLocation());
     setupVoice(el);
     render(el);
     input.focus({ preventScroll: true });
   },
-  leave() { recognition?.stop(); window.speechSynthesis?.cancel(); },
+  leave() { listeners?.abort(); listeners = null; recognition?.stop(); window.speechSynthesis?.cancel(); },
 };

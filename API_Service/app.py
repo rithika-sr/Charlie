@@ -822,7 +822,8 @@ def alerts_answer(route_filter=None, limit=3):
 
 
 def alerts_reply(answer):
-    what = arrivals.route_label(answer.get("route"), []) or "the MBTA system"
+    label = arrivals.route_label(answer.get("route"), [])
+    what = f"the {label}" if label else "the MBTA system"
     if answer["status"] == "unavailable":
         return f"I couldn’t reach MBTA service alerts just now, so I can’t say whether there are delays on {what}. Try again in a moment."
     if answer["status"] == "none":
