@@ -298,3 +298,17 @@ test('trip: an older or invalidated request can never overwrite newer state', ()
   const third = gate.start();
   assert.equal(gate.isCurrent(third.token), true);
 });
+
+import { tripCardsHtml } from '../../static/js/views/assistant.js';
+test('assistant: trip replies render every itinerary card plus a Trip Planner shortcut', () => {
+  const t0 = Date.parse('2026-11-16T22:00:00Z') / 1000;
+  const route = (id, arrive, transfers) => ({ summary: id, duration: 30, duration_text: '30 min', transfers, walk_time: 5, arrive_ts: t0 + arrive * 60, depart_ts: t0,
+    depart_time: '5:00 PM', arrive_time: '', steps: [{ name: id, short_name: id, color: '#00843D', type: 'subway' }], detailed_steps: [] });
+  const html = tripCardsHtml({ code: 'ok', origin: 'Chiswick Rd', origin_name: 'Chiswick Road', destination_name: 'Hynes Convention Center',
+    routes: [route('B', 40, 0), route('D', 33, 0), route('65', 33, 1)], notices: [] }, 3);
+  assert.equal((html.match(/class="trip-card"/g) || []).length, 3);
+  assert.ok(html.indexOf('>D<') < html.indexOf('>65<') && html.indexOf('>65<') < html.indexOf('>B<'));   // earliest arrival, then fewer transfers
+  assert.match(html, /data-plan-trip="3"/);
+  assert.match(tripCardsHtml({ code: 'unresolved', origin: 'zzzzz', routes: [] }, 1), /Open in Trip Planner/);
+  assert.equal(tripCardsHtml({ code: 'need_origin', routes: [] }, 1), '');
+});

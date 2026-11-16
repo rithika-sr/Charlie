@@ -113,7 +113,7 @@ export function tripAlertText(a) {
 
 let sortBy = 'arrival';
 
-function noticeHtml(n) {
+export function noticeHtml(n) {
   const where = n.role === 'destination' ? 'your destination' : 'your starting point';
   const scope = n.direction_specific ? ' in one direction' : '';
   return `<div class="trip-notice" role="note">

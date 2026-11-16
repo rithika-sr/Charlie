@@ -20,6 +20,7 @@ from openai import OpenAI
 
 import transit
 import arrivals
+import trips
 
 # Load Environment Variables
 load_dotenv()
@@ -815,85 +816,6 @@ def get_alerts_for_route(route_id=None, limit=5):
         return []
 
 
-def get_trip_directions_for_chat(origin, destination):
-    """
-    Get trip directions for chat by calling the same get_google_directions function
-    that the Trip Planner uses. This ensures IDENTICAL results.
-    """
-    try:
-        # Helper function to normalize names for matching (handle abbreviations)
-        def normalize_for_matching(name):
-            if not name:
-                return ""
-            name = name.lower().strip()
-            # Common abbreviations
-            name = name.replace(" rd", " road").replace(" st", " street").replace(" ave", " avenue")
-            name = name.replace(" sq", " square").replace(" ctr", " center").replace(" cir", " circle")
-            name = name.replace(" jct", " junction").replace(" hts", " heights")
-            name = name.replace(".", "").replace(",", "").replace("'", "")
-            return name
-        
-        # Normalize input
-        origin_normalized = normalize_for_matching(origin)
-        dest_normalized = normalize_for_matching(destination)
-        
-        print(f"Chat Trip: Looking for origin='{origin_normalized}', dest='{dest_normalized}'")
-        
-        # Find origin station in STATION_DATA
-        origin_data = None
-        origin_name = origin
-        for name, data in STATION_DATA.items():
-            name_normalized = normalize_for_matching(name)
-            if name_normalized == origin_normalized or origin_normalized in name_normalized or name_normalized in origin_normalized:
-                origin_data = data
-                origin_name = name
-                break
-        
-        # Find destination station in STATION_DATA
-        dest_data = None
-        dest_name = destination
-        for name, data in STATION_DATA.items():
-            name_normalized = normalize_for_matching(name)
-            if name_normalized == dest_normalized or dest_normalized in name_normalized or name_normalized in dest_normalized:
-                dest_data = data
-                dest_name = name
-                break
-        
-        # Get coordinates
-        if origin_data:
-            origin_coords = f"{origin_data['lat']},{origin_data['lon']}"
-        else:
-            origin_coords = f"{origin}, Boston, MA"
-            print(f"Origin station not found in STATION_DATA, using address: {origin_coords}")
-        
-        if dest_data:
-            dest_coords = f"{dest_data['lat']},{dest_data['lon']}"
-        else:
-            dest_coords = f"{destination}, Boston, MA"
-            print(f"Destination station not found in STATION_DATA, using address: {dest_coords}")
-        
-        print(f"Chat Trip: {origin_name} ({origin_coords}) -> {dest_name} ({dest_coords})")
-        
-        # Call the SAME function that Trip Planner uses
-        routes = get_google_directions(origin_coords, dest_coords, origin_name, dest_name)
-        
-        if not routes:
-            print("No routes returned from get_google_directions")
-            return None
-        
-        print(f"Chat Trip: Found {len(routes)} routes")
-        
-        # Return routes in a format suitable for the chat AI
-        return routes
-        
-    except Exception as e:
-        print(f"Trip directions error: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
-
-
-
 def route_meta(route_id):
     """Route attributes (direction names/destinations), cached for an hour."""
     try:
@@ -1008,10 +930,39 @@ def arrivals_response(user_msg, parsed):
     return result
 
 
+def trip_response(user_msg, origin, destination):
+    """Chat answer for a trip question, from the same planner as the Trip Planner page."""
+    if not any(m.get("role") == "user" and m.get("content") == user_msg for m in g.history[-1:]):
+        g.history.append({"role": "user", "content": user_msg})
+    origin_coords = None
+    if not origin or origin == "USE_CURRENT_LOCATION":
+        if g.location.get("station"):
+            origin = g.location["station"]
+        elif g.location.get("lat") and g.location.get("lon"):
+            origin, origin_coords = "your location", f"{g.location['lat']},{g.location['lon']}"
+        else:
+            origin = None
+    if not origin:
+        result = {"code": "need_origin", "destination": destination, "destination_name": destination, "routes": []}
+        reply = trips.build_trip_reply(result)
+        g.history.append({"role": "assistant", "content": reply})
+        return {"reply": reply, "trip": result, "request_location": True}
+    result = plan_trip_core(origin, destination, origin_coords=origin_coords)
+    result["routes"] = trips.sort_routes(result.get("routes") or [])
+    reply = trips.build_trip_reply(result, get_now().strftime("%-I:%M %p"))
+    g.history.append({"role": "assistant", "content": reply})
+    return {"reply": reply, "trip": result}
+
+
 def process_chat_message(user_msg):
     """Main chat processing function"""
 
-    # Arrival questions are answered straight from live predictions (no model-written times).
+    # Trip questions use the Trip Planner's own routing; arrival questions use live
+    # predictions. Neither lets the model invent times or steps.
+    trip_q = trips.parse_trip_question(user_msg, is_place=lambda s: find_station_data(s) is not None)
+    if trip_q:
+        return trip_response(user_msg, trip_q["origin"], trip_q["destination"])
+
     parsed = arrivals.parse_arrival_question(user_msg, STATION_DATA, STATION_ALIASES, g.chat_context)
     if parsed:
         return arrivals_response(user_msg, parsed)
@@ -1084,51 +1035,12 @@ def process_chat_message(user_msg):
         }
     
     elif intent_type == 'trip_planning':
-        # Handle trip planning using Google Maps Directions API
-        origin = intent.get('origin')
         dest = intent.get('destination')
-        
-        if origin == "USE_CURRENT_LOCATION" and g.location.get("station"):
-            origin = g.location["station"]
-            data_context["data"]["location_auto_detected"] = True
-            data_context["data"]["detected_station"] = origin
-        elif origin == "USE_CURRENT_LOCATION" and g.location.get("lat"):
-            # Use coordinates directly
-            origin_coords = f"{g.location['lat']},{g.location['lon']}"
-            data_context["data"]["location_auto_detected"] = True
-            data_context["data"]["using_gps_coords"] = True
-        
-        if not origin:
-            data_context["data"] = {
-                "error": "Missing Origin",
-                "message": "I need to know where you're starting from. Please tell me your starting point or click the location button.",
-                "request_location": True
-            }
-        elif not dest:
-            data_context["data"] = {
-                "error": "Missing Destination",
-                "message": "Where would you like to go? Please tell me your destination."
-            }
-        else:
-            # Get directions from Google Maps API
-            routes = get_trip_directions_for_chat(origin, dest)
-            
-            if routes:
-                data_context["data"] = {
-                    "origin": origin,
-                    "destination": dest,
-                    "routes": routes,
-                    "num_routes": len(routes),
-                    "location_auto_detected": data_context.get("data", {}).get("location_auto_detected", False)
-                }
-            else:
-                data_context["data"] = {
-                    "error": "No Routes Found",
-                    "origin": origin,
-                    "destination": dest,
-                    "message": "I couldn't find transit routes between these locations. Please check the station names or try the Trip Planner tool."
-                }
-    
+        if dest:
+            return trip_response(user_msg, intent.get('origin'), dest)
+        data_context["data"] = {"error": "Missing Destination",
+                                "message": "Where would you like to go? Tell me a station or address."}
+
     elif intent_type == 'prediction':
         origin = intent.get('origin')
         if origin == "USE_CURRENT_LOCATION":
@@ -1842,23 +1754,21 @@ def get_mode_shapes():
 GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
 
 
-@app.route('/api/trip-planner', methods=['POST'])
-def plan_trip():
-    """
-    Plan a trip. Google Maps Directions when a key is configured, else the free
-    Transitous (MOTIS) router. Each place is resolved first, so the response can say
-    which field couldn't be found, versus no itineraries, versus a routing failure.
-    """
-    data = request.get_json(silent=True) or {}
-    origin = (data.get('origin') or '').strip()
-    destination = (data.get('destination') or '').strip()
-    if not origin or not destination:
-        return jsonify({"error": "Origin and destination are required"}), 400
+def plan_trip_core(origin, destination, origin_coords=None, dest_coords=None, origin_id=None, dest_id=None):
+    """Plan a trip. Shared by the Trip Planner endpoint and Charlie AI so both give
+    identical itineraries. Google Directions when a key is configured, else the free
+    Transitous (MOTIS) router. Each place is resolved first, so the result says which
+    field couldn't be found, versus no itineraries, versus a routing failure.
 
-    origin_station = station_by_id(data.get('origin_id')) or find_station_data(origin)
-    dest_station = station_by_id(data.get('dest_id')) or find_station_data(destination)
-    origin_coords = data.get('origin_coords') or (f"{origin_station['lat']},{origin_station['lon']}" if origin_station else None)
-    dest_coords = data.get('dest_coords') or (f"{dest_station['lat']},{dest_station['lon']}" if dest_station else None)
+    Returns {"code": "ok"|"no_itineraries"|"unresolved"|"routing_unavailable", ...}."""
+    origin_station = station_by_id(origin_id) or find_station_data(origin)
+    dest_station = station_by_id(dest_id) or find_station_data(destination)
+    origin_coords = origin_coords or (f"{origin_station['lat']},{origin_station['lon']}" if origin_station else None)
+    dest_coords = dest_coords or (f"{dest_station['lat']},{dest_station['lon']}" if dest_station else None)
+    base = {"origin": origin, "destination": destination,
+            "origin_name": origin_station["name"] if origin_station else origin,
+            "destination_name": dest_station["name"] if dest_station else destination,
+            "routes": [], "notices": []}
 
     routes = get_google_directions(origin_coords or f"{origin}, Boston, MA",
                                    dest_coords or f"{destination}, Boston, MA", origin, destination)
@@ -1867,17 +1777,15 @@ def plan_trip():
             from_place = origin_coords or _resolve_place(origin)
             to_place = dest_coords or _resolve_place(destination)
         except RoutingError as e:
-            return jsonify({"error": str(e), "code": "routing_unavailable"}), 502
+            return {**base, "code": "routing_unavailable", "error": str(e)}
         unresolved = [f for f, p in (("origin", from_place), ("destination", to_place)) if not p]
         if unresolved:
-            return jsonify({"origin": origin, "destination": destination, "routes": [], "code": "unresolved",
-                            "unresolved": unresolved,
-                            "message": "We couldn’t find that place in the Boston area."})
-        dest_label = dest_station["name"] if dest_station else destination
+            return {**base, "code": "unresolved", "unresolved": unresolved,
+                    "message": "We couldn’t find that place in the Boston area."}
         try:
-            routes = get_transitous_directions(from_place, to_place, dest_label)
+            routes = get_transitous_directions(from_place, to_place, base["destination_name"])
         except RoutingError as e:
-            return jsonify({"error": str(e), "code": "routing_unavailable"}), 502
+            return {**base, "code": "routing_unavailable", "error": str(e)}
 
     notices = []
     try:
@@ -1886,14 +1794,21 @@ def plan_trip():
         print(f"Trip alert matching skipped: {e}")
     for r in routes:
         r.pop("_legs", None)
+    return {**base, "routes": routes, "notices": notices, "code": "ok" if routes else "no_itineraries"}
 
-    return jsonify({
-        "origin": origin,
-        "destination": destination,
-        "routes": routes,
-        "notices": notices,
-        "code": "ok" if routes else "no_itineraries",
-    })
+
+@app.route('/api/trip-planner', methods=['POST'])
+def plan_trip():
+    data = request.get_json(silent=True) or {}
+    origin = (data.get('origin') or '').strip()
+    destination = (data.get('destination') or '').strip()
+    if not origin or not destination:
+        return jsonify({"error": "Origin and destination are required"}), 400
+    result = plan_trip_core(origin, destination, data.get('origin_coords'), data.get('dest_coords'),
+                            data.get('origin_id'), data.get('dest_id'))
+    if result["code"] == "routing_unavailable":
+        return jsonify({"error": result["error"], "code": result["code"]}), 502
+    return jsonify(result)
 
 
 def station_by_id(stop_id):
@@ -2390,23 +2305,44 @@ def get_transitous_directions(from_place, to_place, dest_name=None):
     return routes[:6]
 
 
+_ABBREV = [(r"\brd\b", "road"), (r"\bst\b", "street"), (r"\bave?\b", "avenue"), (r"\bsq\b", "square"),
+           (r"\bctr\b", "center"), (r"\bhts\b", "heights"), (r"\bjct\b", "junction"), (r"\bmt\b", "mount")]
+
+
+def _norm_place(text):
+    import re as _re
+    t = _re.sub(r"[^a-z0-9/ ]", " ", str(text or "").lower())
+    t = _re.sub(r"\s+(station|stop|sta|t stop)$", "", _re.sub(r"\s+", " ", t).strip())
+    for pattern, full in _ABBREV:
+        t = _re.sub(pattern, full, t)
+    return t.strip()
+
+
 def find_station_data(query):
-    """Find station data by name"""
+    """Station data for a name, alias or abbreviation ("Chiswick Rd", "Park St", "hynes").
+    Addresses that merely contain a station-like word are left to the geocoder."""
     if not query:
         return None
-    
-    query_lower = query.lower().strip()
-    
-    # Try exact match first
+    q = _norm_place(query)
+    if not q:
+        return None
+    alias = STATION_ALIASES.get(str(query).lower().strip()) or STATION_ALIASES.get(q)
+    if alias and alias in STATION_DATA:
+        return {"name": alias, **STATION_DATA[alias]}
     for name, data in STATION_DATA.items():
-        if name.lower() == query_lower:
+        if _norm_place(name) == q:
             return {"name": name, **data}
-    
-    # Try partial match
+    # Unambiguous prefix of one station's name ("hynes convention" -> Hynes Convention Center).
+    # Street addresses (leading house number) are never treated as stations.
+    if q[:1].isdigit():
+        return None
+    hits = {}
     for name, data in STATION_DATA.items():
-        if query_lower in name.lower():
-            return {"name": name, **data}
-    
+        if _norm_place(name).startswith(q) and len(q) >= 4:
+            hits.setdefault(data["id"], (name, data))
+    if len(hits) == 1:
+        name, data = next(iter(hits.values()))
+        return {"name": name, **data}
     return None
 
 

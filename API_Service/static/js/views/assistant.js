@@ -6,7 +6,9 @@ import { store } from '../core/store.js';
 import { LINES } from '../core/constants.js';
 import { escapeHtml as e, renderRichText, formatClockSeconds } from '../core/format.js';
 import { icon } from '../ui/icons.js';
-import { lineBadge, arrivalRow } from '../ui/components.js';
+import { lineBadge, arrivalRow, tripOptionCard } from '../ui/components.js';
+import { sortTrips, tripBadges, arrivalNote, tripAlertText, noticeHtml } from './trip.js';
+import { navigate } from '../core/router.js';
 import { openStation } from '../ui/station-panel.js';
 import { requestLocation } from '../ui/location.js';
 
@@ -65,6 +67,22 @@ export function arrivalsCardHtml(a) {
   </div>`;
 }
 
+/** Itinerary cards under a trip reply: the Trip Planner's own cards, plus a shortcut to it. */
+export function tripCardsHtml(t, i) {
+  if (!t) return '';
+  const open = t.code !== 'need_origin' && t.origin
+    ? `<button class="btn btn--secondary btn--sm" data-plan-trip="${i}">${icon('route', { size: 14 })}Open in Trip Planner</button>` : '';
+  if (t.code !== 'ok' || !(t.routes || []).length) return open ? `<div class="msg-card"><div class="btn-row">${open}</div></div>` : '';
+  const routes = sortTrips(t.routes);
+  const badges = tripBadges(routes);
+  return `<div class="msg-card msg-card--trips" aria-label="Trip options">
+    ${(t.notices || []).map(noticeHtml).join('')}
+    <div class="stack-sm">${routes.map((r, k) => tripOptionCard(r, k, {
+      badges: badges[k], note: arrivalNote(r, routes), alerts: (r.alerts || []).map(tripAlertText) })).join('')}</div>
+    <div class="msg-card__foot"><span class="muted small">From the Trip Planner’s live routing · earliest arrival first</span>${open}</div>
+  </div>`;
+}
+
 function messageHtml(msg, i) {
   if (msg.role === 'user') return `<li class="msg msg--user"><div class="msg__bubble">${e(msg.text)}</div></li>`;
   if (msg.role === 'error') return `<li class="msg msg--bot msg--error"><div class="msg__avatar" aria-hidden="true">${icon('alert', { size: 16 })}</div><div class="msg__bubble">${e(msg.text)} <button class="link" data-retry="${i}">Try again</button></div></li>`;
@@ -72,10 +90,10 @@ function messageHtml(msg, i) {
   return `<li class="msg msg--bot">
     <div class="msg__avatar" aria-hidden="true">${icon('sparkle', { size: 16 })}</div>
     <div class="msg__content">
-      <div class="msg__bubble"><p>${renderRichText(msg.arrivals?.status === 'ok' ? String(msg.text).split('\n')[0] : msg.text)}</p></div>
-      ${arrivalsCardHtml(msg.arrivals)}
+      <div class="msg__bubble"><p>${renderRichText(msg.arrivals?.status === 'ok' || msg.trip?.code === 'ok' ? String(msg.text).split('\n')[0] : msg.text)}</p></div>
+      ${arrivalsCardHtml(msg.arrivals)}${tripCardsHtml(msg.trip, i)}
       <div class="msg__actions">
-        ${(msg.arrivals ? chips.filter(c => c.type !== 'station') : chips).map(c => c.type === 'station'
+        ${(msg.arrivals || msg.trip ? chips.filter(c => c.type !== 'station') : chips).map(c => c.type === 'station'
           ? `<button class="chip chip--btn" data-open-station="${e(c.id)}">${icon('pin', { size: 14 })}${e(c.name)}</button>`
           : `<a class="chip chip--btn" href="#/lines/${encodeURIComponent(c.id)}">${lineBadge(c.id, { size: 'sm', label: false })}${e(c.name)}</a>`).join('')}
         ${'speechSynthesis' in window ? `<button class="icon-btn icon-btn--sm" data-speak="${i}" aria-label="Read this reply aloud" title="Read aloud">${icon('speaker', { size: 16 })}</button>` : ''}
@@ -110,7 +128,7 @@ async function send(el, text) {
   } else {
     if (Array.isArray(data.history)) chat.history = data.history;
     if (data.context) chat.context = data.context;
-    chat.messages.push({ role: 'bot', text: data.reply || 'No reply.', arrivals: data.arrivals || null });
+    chat.messages.push({ role: 'bot', text: data.reply || 'No reply.', arrivals: data.arrivals || null, trip: data.trip || null });
     if (data.request_location) setTimeout(() => requestLocation(), 600);
   }
   render(el);
@@ -181,9 +199,16 @@ export const assistantView = {
       send(el, text);
     });
     el.addEventListener('click', ev => {
-      const t = ev.target.closest('[data-suggest],[data-open-station],[data-speak],[data-retry]');
+      const t = ev.target.closest('[data-suggest],[data-open-station],[data-speak],[data-retry],[data-plan-trip]');
       if (!t) return;
       if (t.dataset.suggest) send(el, t.dataset.suggest);
+      if (t.dataset.planTrip) {
+        const trip = store.get('chat').messages[Number(t.dataset.planTrip)]?.trip;
+        if (trip) {
+          store.set('pendingTrip', { origin: { name: trip.origin_name || trip.origin }, destination: { name: trip.destination_name || trip.destination } });
+          navigate('trip');
+        }
+      }
       if (t.dataset.openStation) openStation(t.dataset.openStation);
       if (t.dataset.speak) speak(store.get('chat').messages[Number(t.dataset.speak)].text);
       if (t.dataset.retry) {
