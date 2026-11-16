@@ -43,11 +43,11 @@ Live arrivals, a real-time train map, door-to-door trip planning, honest service
 | **Overview** | Greeting and live timestamp, a one-line subway status summary, a trip planner, live arrivals for your recent or nearest stations, the top subway alerts, and quick links to every mode. |
 | **Live Map** | Full-screen dark map with MBTA line paths, all 126 stations and every subway and Green Line vehicle, color-coded and pointing in its direction of travel, refreshed about every 10 s. Line and layer filters, locate, fit-network, station search, and a route-focus mode for any route (e.g. `#/map?route=66`). |
 | **Station details** | Opens as a side panel on desktop and a draggable bottom sheet on phones: served lines, accessibility, arrivals grouped by line and direction with large countdowns, and active alerts. |
-| **Trip Planner** | Accessible station autocomplete (or free-text addresses), swap, use-my-location and recent trips. Options are ordered by total travel time and show segments, transfers, walking time, an estimated fare and alerts on the lines used. |
+| **Trip Planner** | Accessible station autocomplete (or free-text addresses), swap, use-my-location and recent trips. Options are ordered by earliest arrival (re-sortable by duration, transfers or walking) and show segments, transfers, walking time, an estimated fare and alerts on the lines used. |
 | **Stations** | Search all 126 subway and light-rail stations (partial, abbreviated and fuzzy matching) and filter by line. |
 | **Lines & Routes** | Subway, Bus (searchable), Commuter Rail and Ferry. Each line page shows its station sequence with the next trains in both directions, alerts, the number of vehicles reporting, and a map shortcut. |
 | **Service Alerts** | Prioritized by what affects riders now. Filters for all service, subway, bus, Commuter Rail and ferry, with accessibility (elevators, escalators) kept separate. Shows active periods, updates and links to the official alert. |
-| **Charlie AI** | The original assistant (`/api/chat`) in a cleaner chat UI: suggestions, voice input, read-aloud, and tappable chips for stations and lines mentioned in replies. |
+| **Charlie AI** | The assistant (`/api/chat`): trips (“chiswick rd to harvard”, then “what about Hynes?”), live arrivals and alerts in plain English. Trips use the Trip Planner's journey service and render as journey cards with refresh, return-trip and edit-in-planner actions. Also voice input and read-aloud. |
 
 Built in: global search (press <kbd>/</kbd>), a live-data freshness indicator, keyboard support throughout, ARIA comboboxes, visible focus, WCAG-checked colors (line badges pick black or white text for contrast), and reduced-motion support.
 
@@ -114,13 +114,18 @@ flowchart LR
 - **Arrival order.** Arrivals are sorted by the time that's shown: the arrival time, or the departure time for trains leaving a terminal such as Oak Grove. Departed, cancelled and skipped trips are dropped. "Boarding" appears only when the MBTA reports that status.
 - **Line status counts distinct, currently active service alerts of severity 3 or higher.** An alert used to be counted once per affected stop, so the Red Line showed "52 alerts". Elevator and escalator outages, and informational notices (severity 1–2), don't change a line's status.
 - **Vehicles stay where the MBTA last reported them.** Markers move only on each refresh (about every 10 s); there's no movement interpolation. If a refresh fails, the last positions stay on screen with a "Couldn't refresh" note, and polling pauses when the map isn't visible.
-- **Trip options are ordered by total travel time.** "Shortest trip" and "Fewest transfers" badges follow transparent rules, explained in their tooltips.
+- **Trip options are ordered by earliest arrival.** "Shortest trip" and "Fewest transfers" badges follow transparent rules, explained in their tooltips.
+- **Chat and the Trip Planner share one journey service** (`journey.py`): the same station resolution, the same providers in the same order (Google Directions when configured, then Transitous), the same alert matching. Chat replies are written from that structured result, never by the language model, and say which of these happened: places not found, a station name that needs choosing, no itineraries, or the routing service not answering.
 
 ### Frontend structure (no build step)
 
 ```
 API_Service/
-├── app.py                 Flask app: REST API, chatbot, trip planner
+├── app.py                 Flask app: REST API, chat routing, provider wiring
+├── journey.py             Journey service shared by chat and the trip planner
+├── places.py              Station-name resolution (abbreviations, aliases, ambiguity)
+├── assistant.py           Chat trip requests, follow-ups, per-user context, replies
+├── arrivals.py            Chat arrival questions and replies
 ├── transit.py             Pure helpers: prediction timing/sorting, alert classification
 ├── templates/index.html   App shell (sidebar, command bar, tab bar, panel)
 ├── static/css/app.css     Design tokens + components + responsive rules
@@ -161,7 +166,7 @@ python app.py        # → http://localhost:5001
 | Variable | Required | Used for |
 |---|---|---|
 | `MBTA_API_KEY` | Recommended | Live predictions, vehicles and alerts. Without it, the MBTA allows only a small number of requests per minute, and the UI shows "Couldn't refresh" when it's rate-limited. |
-| `OPENAI_API_KEY` | For chat | Charlie AI. Without it, chat runs in a basic fallback mode. |
+| `OPENAI_API_KEY` | Optional | Helps Charlie AI understand unusual phrasing (structured intent only). Trips, arrivals and alerts are parsed and answered without it. |
 | `GOOGLE_MAPS_API_KEY` | Optional | Google transit directions. Without it, the trip planner uses Transitous (free, no key). |
 
 ---
@@ -170,13 +175,16 @@ python app.py        # → http://localhost:5001
 
 ```bash
 cd API_Service
-pip install pytest
-python -m pytest                          # 18 backend tests (MBTA mocked, no network)
-node --test tests/js/frontend.test.mjs    # 15 frontend logic tests (Node 20+)
+pip install -r requirements.txt pytest
+python -m pytest                          # backend tests: MBTA, routing and OpenAI mocked, no network or keys
+node --test tests/js/*.test.mjs           # frontend logic tests (Node 20+)
 ```
 
+The same commands run in CI on every pull request ([`app-tests.yml`](.github/workflows/app-tests.yml)) with no credentials.
+
 - **Backend tests** cover prediction timing and sorting (departure-only, null, tie, UTC-offset, departed and cancelled cases), alert classification and priority, the honest line status, and that MBTA errors surface as errors rather than empty lists. They also check the station, line, dashboard, alerts, stations-list, chat and trip-planner endpoints, and that every module is served versioned (never stale).
-- **Frontend tests** cover station search (every one of the 126 stations is found by name, plus partial and fuzzy queries), countdown states, alert filters and counts, polyline decoding, the router, trip ordering and badges, station mentions in AI replies, arrival grouping, and badge text contrast.
+- **Chat and journey tests** cover the reported “chiswick rd to harvard/hynes” failures, ordinary phrasings and abbreviations, follow-ups (“what about Hynes?”, “how do I get back?”), ambiguous and unknown places, router outages versus empty results, Google-to-Transitous fallback, time and accessibility requests, stale and per-user context, and that chat and the Trip Planner return the same itineraries for the same request.
+- **Frontend tests** cover station search (every one of the 126 stations is found by name, plus partial and fuzzy queries), countdown states, alert filters and counts, polyline decoding, the router, trip ordering and badges, station mentions in AI replies, chat journey cards and their actions, arrival grouping, and badge text contrast.
 - **UI flows** were checked by hand in a real browser at 375, 390, 768, 1024 and 1440 px. These covered keyboard navigation, comboboxes, map selection and filters, the bottom sheet, and the error states.
 
 ---
@@ -186,7 +194,7 @@ node --test tests/js/frontend.test.mjs    # 15 frontend logic tests (Node 20+)
 Production runs on **[Vercel](https://vercel.com)** as a serverless Python function: **https://charlie-mbta.vercel.app**
 
 - **Every push to `main` deploys.** The Vercel project is connected to this repo, with its Root Directory set to `API_Service`. Static assets are cache-busted with the commit SHA.
-- **Secrets are Vercel environment variables.** `MBTA_API_KEY`, `OPENAI_API_KEY` and optionally `GOOGLE_MAPS_API_KEY`. Nothing secret is in the repo.
+- **Secrets are Vercel environment variables.** `MBTA_API_KEY`, `OPENAI_API_KEY` and optionally `GOOGLE_MAPS_API_KEY`. The live app reads keys only from the environment.
 - **Zero config.** Vercel detects the Flask `app` in `app.py`, and `.vercelignore` keeps the tests out of the function bundle.
 
 ```bash
@@ -222,8 +230,8 @@ All endpoints return JSON. Base URL: `https://charlie-mbta.vercel.app`
 | `GET` | `/api/predictions?stop=<id>` | Upcoming predictions at a stop (or `?route=<id>`) |
 | `GET` | `/api/nearest-station?lat=&lon=` | Nearest station to a coordinate |
 | `POST` | `/api/set-location` | Resolve a coordinate to its nearest station |
-| `POST` | `/api/trip-planner` | Directions. Body: `{ origin, destination, origin_coords?, dest_coords? }` |
-| `POST` | `/api/chat` | Assistant. Body: `{ message, history?, location? }`; returns `{ reply, history }` |
+| `POST` | `/api/trip-planner` | Directions. Body: `{ origin, destination, origin_id?, dest_id?, origin_coords?, dest_coords? }`; `code` is `ok`, `ambiguous`, `unresolved`, `same_place`, `no_itineraries` or `routing_unavailable` (HTTP 502) |
+| `POST` | `/api/chat` | Assistant. Body: `{ message, history?, location?, context?, action? }`; returns `{ reply, history, context }` plus `journey`, `arrivals` or `alerts` when the answer is about one |
 
 Changes to the API only add fields; existing field names are unchanged.
 
@@ -234,7 +242,7 @@ Changes to the API only add fields; existing field names are unchanged.
 - **Trip legs aren't drawn on the map.** The routing response's leg geometry isn't passed through yet. Fares are estimates.
 - **Bus, Commuter Rail and ferry vehicles appear only in route-focus mode.** The main map shows subway and light rail; open a route's page and choose "Show on live map" to see its vehicles.
 - **Commuter Rail and ferry service is mostly scheduled.** Live predictions appear only when the MBTA publishes them.
-- **Assistant replies are plain text.** Station and line chips are detected from the reply text, not from structured data.
+- **Chat plans trips for leaving now only.** Requests such as “arrive by 5 pm” or “step-free route” are answered for leaving now, with a note saying the requirement wasn't applied. Bus and Commuter Rail stop questions that need the language model are still phrased by it from live predictions.
 - **Dark theme only.** No Playwright suite yet; UI flows were verified manually in the browser.
 - **The ML model isn't used by the live app.** The delay-prediction model in [`Model_Development/`](Model_Development/readme.md) is part of the offline pipeline below.
 
