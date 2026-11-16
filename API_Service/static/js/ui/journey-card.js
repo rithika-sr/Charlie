@@ -3,10 +3,9 @@
 // adds no times, lines or fares of its own.
 
 import { escapeHtml as e, formatClock } from '../core/format.js';
-import { effectLabel } from '../core/alerts.js';
 import { tripOptionCard, lineBadge } from './components.js';
 import { icon } from './icons.js';
-import { sortTrips, tripBadges, tripAlertText, arrivalNote } from '../views/trip.js';
+import { sortTrips, tripBadges, tripAlertText, arrivalNote, noticeHtml } from '../views/trip.js';
 
 const PROVIDERS = { transitous: 'Transitous', google: 'Google Maps' };
 const ROLE = { origin: 'start', destination: 'destination' };
@@ -29,13 +28,6 @@ export function journeyEndpoints(j) {
 
 function actionButton(i, kind, label, iconName, extra = '') {
   return `<button type="button" class="btn btn--ghost btn--sm" data-journey="${i}" data-journey-action="${kind}" ${extra}>${icon(iconName, { size: 14 })}${e(label)}</button>`;
-}
-
-function noticeHtml(n) {
-  const where = n.role === 'destination' ? 'your destination' : 'your starting point';
-  return `<div class="trip-notice" role="note">${icon('alert', { size: 18 })}
-    <div><strong>${e(n.station)} (${e(where)}): ${e(effectLabel(n.effect).toLowerCase())}${n.direction_specific ? ' in one direction' : ''}.</strong>
-    ${n.explanation ? `<span>${e(n.explanation)}</span>` : ''}<p class="muted small">${e(n.header)}</p></div></div>`;
 }
 
 function caveatsHtml(j) {

@@ -298,3 +298,19 @@ test('trip: an older or invalidated request can never overwrite newer state', ()
   const third = gate.start();
   assert.equal(gate.isCurrent(third.token), true);
 });
+
+import { journeyCardHtml } from '../../static/js/ui/journey-card.js';
+// From the teammate's version of this fix (e1e0a79), now against the shared journey card.
+test('assistant: trip replies render every itinerary card plus a Trip Planner shortcut', () => {
+  const t0 = Date.parse('2026-11-16T22:00:00Z') / 1000;
+  const route = (id, arrive, transfers) => ({ summary: id, duration: 30, duration_text: '30 min', transfers, walk_time: 5, arrive_ts: t0 + arrive * 60, depart_ts: t0,
+    depart_time: '5:00 PM', arrive_time: '', steps: [{ name: id, short_name: id, color: '#00843D', type: 'subway' }], detailed_steps: [] });
+  const station = (name, id) => ({ status: 'ok', kind: 'station', name, id, query: name, lat: 42.3, lon: -71.1 });
+  const html = journeyCardHtml({ code: 'ok', provider: 'transitous', checked_at: '2026-11-16T22:00:00Z', origin: station('Chiswick Road', 'place-chswk'),
+    destination: station('Hynes Convention Center', 'place-hymnl'), routes: [route('B', 40, 0), route('D', 33, 0), route('65', 33, 1)], notices: [] }, 3);
+  assert.equal((html.match(/class="trip-card"/g) || []).length, 3);
+  assert.ok(html.indexOf('>D<') < html.indexOf('>65<') && html.indexOf('>65<') < html.indexOf('>B<'));   // earliest arrival, then fewer transfers
+  assert.match(html, /data-journey="3" data-journey-action="planner"/);
+  assert.match(journeyCardHtml({ code: 'unresolved', origin: { status: 'unresolved', query: 'zzzzz' }, unresolved: ['origin'], routes: [] }, 1), /Edit in Trip Planner/);
+  assert.match(journeyCardHtml({ code: 'needs_origin', request: { destination: { name: 'Harvard' } } }, 1), /Use my location/);
+});

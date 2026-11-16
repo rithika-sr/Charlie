@@ -279,3 +279,69 @@ def test_direction_specific_bypass_and_route_wide_alerts():
     north = transit.match_leg_alerts([bypass, wide, expired], northbound)
     assert [(m["id"], m["scope"]) for m in north] == [("b", "stop"), ("w", "route")]
     assert transit.match_leg_alerts([bypass, wide, expired], unaffected) == []
+
+
+# ---------- Charlie AI trip questions use the Trip Planner's routing ----------
+# Scenarios from the teammate's version of this fix (merged as e1e0a79); assertions now target the
+# shared journey service (journey.py) and the journey card, which replaced the long text reply.
+
+def test_chat_plans_chiswick_rd_to_hynes_with_the_planner(client, monkeypatch):
+    plan = {"itineraries": [
+        itin(2, 40, [walk("START", "Chiswick Road", 2, distance=150),
+                     leg("SUBWAY", "Green-B", ("Chiswick Road", "70122"), ("Hynes Convention Center", "70152"), 4, 38, direction=1)]),
+        itin(1, 33, [walk("START", "Reservoir", 14, distance=950),
+                     leg("SUBWAY", "Green-D", ("Reservoir", "70174"), ("Hynes Convention Center", "70152"), 15, 33, direction=1)]),
+    ]}
+    plan_with_alerts(monkeypatch, plan, [])
+    monkeypatch.setattr(charlie, "client", None)
+    data = client.post("/api/chat", json={"message": "How do I get from Chiswick Rd to Hynes Convention Center?"}).get_json()
+    j = data["journey"]
+    assert j["code"] == "ok" and j["origin"]["name"] == "Chiswick Road" and j["destination"]["name"] == "Hynes Convention Center"
+    assert [r["summary"] for r in j["routes"]] == ["Green-D Line", "Green-B Line"]     # earliest arrival first
+    assert data["reply"].startswith("**Chiswick Road** → **Hynes Convention Center**")
+    assert "1 more option" in data["reply"]                                     # every option is returned for the card
+    assert j["routes"][0]["detailed_steps"][0]["instruction"] == "Walk 0.6 mi to Reservoir"   # steps from the routing data
+    planner = client.post("/api/trip-planner", json={"origin": "Chiswick Rd", "destination": "Hynes Convention Center"}).get_json()
+    assert j["routes"] == trips_sorted(planner["routes"])                       # identical to the Trip Planner
+    assert "couldn" not in data["reply"]
+
+
+def trips_sorted(routes):
+    import assistant
+    return assistant.sort_routes(routes)
+
+
+def test_chat_trip_errors_are_specific(client, monkeypatch):
+    monkeypatch.setattr(charlie, "client", None)
+    transitous(monkeypatch, geocode=[])                     # nothing resolves in the Boston area
+    bad = client.post("/api/chat", json={"message": "How do I get from zzzzz to Harvard?"}).get_json()
+    assert bad["journey"]["code"] == "unresolved" and "“zzzzz”" in bad["reply"]
+    need = client.post("/api/chat", json={"message": "Take me to Harvard"}).get_json()
+    assert need["journey"]["code"] == "needs_origin" and need["reply"].startswith("Where are you starting from?")
+    near = client.post("/api/chat", json={"message": "Take me to Harvard",
+                                          "location": {"station": "Park Street", "lat": 42.356, "lon": -71.062}}).get_json()
+    assert near["journey"]["request"]["origin"] == {"name": "Your location", "lat": 42.356, "lon": -71.062}
+    assert any("near Park Street" in c["text"] for c in near["journey"]["caveats"])
+    transitous(monkeypatch, fail=True)
+    down = client.post("/api/chat", json={"message": "from Park Street to Harvard"}).get_json()
+    assert down["journey"]["code"] == "routing_unavailable" and "isn’t responding" in down["reply"]
+
+
+def test_trip_parser_and_station_names():
+    import assistant
+    cases = {
+        "How do I get from Chiswick Rd to Hynes Convention Center?": ("Chiswick Rd", "Hynes Convention Center"),
+        "Directions from South Station to Fenway": ("South Station", "Fenway"),
+        "I'm at Ruggles, how can I reach Harvard?": ("Ruggles", "Harvard"),
+        "How do I get to Harvard from 360 Huntington Ave, Boston?": ("360 Huntington Ave, Boston", "Harvard"),
+        "Chiswick Rd to Hynes": ("Chiswick Rd", "Hynes"),
+        "Take me to the Airport": (None, "Airport"),
+    }
+    for text, (o, d) in cases.items():
+        r = assistant.parse_trip_request(text, {}, charlie.is_place_phrase)
+        assert (r["origin"], r["destination"]) == (o, d), text
+    assert assistant.parse_trip_request("next train from Park Street to Alewife", {}, charlie.is_place_phrase) is None
+    assert assistant.parse_trip_request("Are there delays on the Orange Line?", {}, charlie.is_place_phrase) is None
+    assert charlie.find_station_data("Chiswick Rd")["name"] == "Chiswick Road"
+    assert charlie.find_station_data("hynes")["name"] == "Hynes Convention Center"
+    assert charlie.find_station_data("360 Huntington Ave, Boston") is None

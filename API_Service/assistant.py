@@ -33,7 +33,7 @@ _TAIL = re.compile(r"\s*(?:,?\s*(?:please|thanks|thank you|pls|thx))+$|[?.!]+$",
 
 # ---------------------------------------------------------------- trip phrasing
 
-_LEAD = (r"(?:how (?:do|can|should|would|could) (?:i|we) (?:get|go|travel|ride|commute)|how (?:to|i) get|how to go"
+_LEAD = (r"(?:how (?:do|can|should|would|could) (?:i|we) (?:get|go|travel|ride|commute|reach)|how (?:to|i) (?:get|reach)|how to go"
          r"|(?:give me |get |show )?(?:directions|a route|route|routes|a trip|trip|itinerary)"
          r"|get me|take me|bring me|i(?:'m| am) (?:going|heading|trying to get)|i (?:want|need) to (?:go|get)"
          r"|(?:best|fastest|quickest) way(?: to get)?|going|heading|travel|commute|navigate)")

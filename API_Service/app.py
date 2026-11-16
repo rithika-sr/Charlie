@@ -2395,6 +2395,14 @@ def get_transitous_directions(from_place, to_place, dest_name=None):
     return routes[:6]
 
 
+def find_station_data(query):
+    """Station data for a name, alias or abbreviation ("Chiswick Rd", "Park St", "hynes"),
+    or None when the text isn't one station. Uses the resolver chat and the Trip Planner
+    share (places.py), so street addresses are left to the geocoder."""
+    found = places.resolve_station(query, STATION_DATA, STATION_ALIASES)
+    return places.station_record(found["name"], STATION_DATA) if found["status"] == "ok" else None
+
+
 if __name__ == '__main__':
     import sys
     port = int(os.environ.get('PORT', 5001))
