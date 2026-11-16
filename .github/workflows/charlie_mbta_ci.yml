@@ -1,111 +1,141 @@
 name: Charlie MBTA Model CI/CD
 
+# Two jobs, kept apart on purpose:
+#   ml_validation  trains and checks the model on the DVC-pinned data. No cloud credentials.
+#                  Missing data or any failing step fails the job; nothing is skipped.
+#   cloud_upload   uploads the model that ml_validation just produced. Runs only on pushes
+#                  to main and only after validation passed, so a successful cloud login
+#                  can never stand in for validation.
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  train_validate_bias:
+  ml_validation:
+    name: ML validation
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: "${{ github.workspace }}"
+      # MLflow 3 refuses the ./mlruns file store unless asked; CI keeps a local record only.
+      MLFLOW_ALLOW_FILE_STORE: "true"
 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: Model_Development/requirements-ci.txt
+
+      - name: Install pinned ML dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r Model_Development/requirements-ci.txt
+
+      # The processed data is versioned by dvc.lock and stored in a DVC remote.
+      # Configure it with the repository variable DVC_REMOTE_URL (for example gs://bucket/path)
+      # and, for a private bucket, the secret DVC_REMOTE_CREDENTIALS (a read-only service
+      # account key). See Model_Development/readme.md -> "Training data in CI".
+      - name: Fetch pinned training data (DVC)
+        env:
+          DVC_REMOTE_URL: ${{ vars.DVC_REMOTE_URL }}
+          DVC_REMOTE_CREDENTIALS: ${{ secrets.DVC_REMOTE_CREDENTIALS }}
+        run: |
+          if [ -z "$DVC_REMOTE_URL" ]; then
+            echo "::error title=Training data unavailable::No DVC remote is configured (repository variable DVC_REMOTE_URL is empty), so the data pinned in dvc.lock can't be fetched and ML validation can't run."
+            exit 1
+          fi
+          dvc remote add --local --force --default ci "$DVC_REMOTE_URL"
+          if [ -n "$DVC_REMOTE_CREDENTIALS" ]; then
+            printf '%s' "$DVC_REMOTE_CREDENTIALS" > "$RUNNER_TEMP/dvc-remote-key.json"
+            dvc remote modify --local ci credentialpath "$RUNNER_TEMP/dvc-remote-key.json"
+          fi
+          dvc pull preprocess
+
+      - name: Check training data matches dvc.lock
+        run: python -m Model_Development.ml_src.check_data
+
+      - name: Train models
+        run: python -m Model_Development.ml_src.model_train
+
+      - name: Hyperparameter tuning
+        run: python -m Model_Development.ml_src.model_tuning
+
+      - name: Select best model
+        run: python -m Model_Development.ml_src.model_select
+
+      - name: Register model in local MLflow
+        run: python -m Model_Development.ml_src.register_model
+
+      - name: Bias analysis
+        run: python -m Model_Development.ml_src.bias_analysis
+
+      - name: Explainability (SHAP + LIME)
+        run: python -m Model_Development.ml_src.model_explain
+
+      - name: Drift monitoring
+        run: python -m Model_Development.ml_src.monitor_drift
+
+      - name: Upload validated model and reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-development-outputs
+          if-no-files-found: error
+          path: |
+            Model_Development/models/
+            Model_Development/reports/
+            Model_Development/mlruns/
+
+  cloud_upload:
+    name: Upload model to GCP Artifact Registry
+    needs: ml_validation
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
     env:
       PYTHONPATH: "${{ github.workspace }}"
 
     steps:
-      # 1️⃣ Checkout
+      - name: Require cloud credentials
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          if [ -z "$GCP_SA_KEY" ]; then
+            echo "::error title=Model not uploaded::Validation passed, but the GCP_SA_KEY secret isn't configured, so the model was not uploaded."
+            exit 1
+          fi
+
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Python
       - name: Setup Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      # 3️⃣ Install dependencies
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install dvc[all] fairlearn mlflow matplotlib seaborn \
-                      scikit-learn joblib pyyaml lime shap plotly \
-                      imbalanced-learn pandas numpy lightgbm
-
-      # 4️⃣ Pull DVC data
-      - name: Pull DVC Data
-        run: |
-          if [ -f "dvc.yaml" ]; then
-            dvc pull || echo "⚠ No DVC remote found"
-          else
-            echo "⚠ No dvc.yaml file — skipping"
-          fi
-
-      # 5️⃣ Train Model
-      - name: Train Model
-        run: |
-          if [ -f "Data_Pipeline/data/processed/predictions.csv" ]; then
-            python -m Model_Development.ml_src.model_train
-          else
-            echo "⚠ Processed data missing — skipping training."
-          fi
-
-      # 6️⃣ Hyperparameter Tuning
-      - name: Hyperparameter Tuning
-        run: python -m Model_Development.ml_src.model_tuning || echo "⚠ Skipping tuning"
-
-      # 7️⃣ Model Selection (VERY IMPORTANT)
-      - name: Select Best Model
-        run: |
-          if [ -f "Data_Pipeline/data/processed/predictions.csv" ]; then
-            python -m Model_Development.ml_src.model_select
-          else
-            echo "⚠ Skipping model selection — processed data missing."
-          fi
-
-      # 8️⃣ Register model locally to MLflow
-      - name: Register Model in Local MLflow
-        run: python -m Model_Development.ml_src.register_model || echo "⚠ Skipping registry"
-
-      # 9️⃣ Bias Analysis
-      - name: Bias Analysis
-        run: python -m Model_Development.ml_src.bias_analysis || echo "⚠ Skipping bias analysis"
-
-      # 🔟 Explainability
-      - name: Explainability (SHAP + LIME)
-        run: python -m Model_Development.ml_src.model_explain || echo "⚠ Skipping explainability"
-
-      # 1️⃣1️⃣ Drift Monitoring
-      - name: Drift Monitoring
-        run: python -m Model_Development.ml_src.monitor_drift || echo "⚠ Skipping drift monitoring"
-
-      # 1️⃣2️⃣ Upload Artifacts
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+      - name: Download the model this run validated
+        uses: actions/download-artifact@v4
         with:
           name: model-development-outputs
-          path: |
-            models/
-            Model_Development/reports/
-            mlruns/
+          path: Model_Development/
 
-      # 1️⃣3️⃣ Authenticate GCP
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      # 1️⃣4️⃣ Setup gcloud
       - name: Setup Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: charlie-478223
 
-      # 1️⃣5️⃣ Upload to Artifact Registry
       - name: Upload to Artifact Registry
-        run: python -m Model_Development.ml_src.gcp_registry || echo "⚠ Upload skipped"
-
-      # 1️⃣6️⃣ Done
-      - name: Done
-        run: echo "🎉 CI/CD Pipeline Completed!"
+        run: python -m Model_Development.ml_src.gcp_registry
