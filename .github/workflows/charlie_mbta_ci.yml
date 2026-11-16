@@ -90,10 +90,12 @@ jobs:
         with:
           name: model-development-outputs
           if-no-files-found: error
+          # bias_analysis writes to the root reports/ folder; keep it with the rest.
           path: |
             Model_Development/models/
             Model_Development/reports/
             Model_Development/mlruns/
+            reports/bias_report.csv
 
   cloud_upload:
     name: Upload model to GCP Artifact Registry
@@ -125,7 +127,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: model-development-outputs
-          path: Model_Development/
+          path: .
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2

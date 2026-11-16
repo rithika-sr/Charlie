@@ -253,6 +253,16 @@ Notes:
 - If nobody still has the files that match `dvc.lock`, they can't be recovered. The fetch stage calls the live MBTA API, so `dvc repro` produces a new snapshot, not the old one. In that case, regenerate the data, commit the new `dvc.lock`, and push that data instead.
 - Secrets aren't available to pull requests from forks, so ML validation fails on those at the fetch step.
 
+#### What CI validation does and doesn't prove
+
+A passing ML validation job means the pipeline ran end to end on the pinned data and every step succeeded. It does **not** show that the model predicts delays. Two known modeling problems make the reported scores (including the ROC-AUC of 0.81) unreliable. Each is for its own modeling PR, and this CI change deliberately leaves both alone:
+
+- **The delay label measures dwell time, not lateness.** `model_train.prepare_data` defines `delayed` as `departure_time − arrival_time > 5 min` from MBTA *predictions*. That is the time a vehicle is expected to spend at a stop, not its delay against a schedule. In the committed `models/reference_stats.json`, 5 of 127,159 rows are positive.
+- **The evaluation leaks:**
+  - `model_tuning` applies SMOTE to the whole dataset before `train_test_split`, so synthetic copies of the few positives land on both sides of the split.
+  - The split is random, on time-ordered snapshots.
+  - `model_select` scores every candidate on the full dataset, training rows included, and picks the winner by that score.
+
 ### 🧪 13. Run Everything Locally
 ``` bash
 # Install dependencies
