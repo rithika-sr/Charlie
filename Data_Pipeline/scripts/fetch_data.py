@@ -5,8 +5,11 @@ import logging
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[2]))
+# params.yaml sits next to scripts/; resolve it so the stage works from any working directory.
+PARAMS_FILE = Path(__file__).resolve().parents[1] / "params.yaml"
+
 def load_params():
-    with open("params.yaml", "r") as f:
+    with open(PARAMS_FILE, "r") as f:
         return yaml.safe_load(f)
 
 def setup_logger(level="INFO"):

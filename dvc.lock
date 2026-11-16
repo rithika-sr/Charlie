@@ -27,7 +27,7 @@ stages:
       hash: md5
       md5: b0982b3de5d47005627e70d036ce83b1
       size: 3633
-    - path: params.yaml
+    - path: Data_Pipeline/params.yaml
       hash: md5
       md5: 2f5b2d8c46c6e40d3da6938edae43180
       size: 939
@@ -49,7 +49,7 @@ stages:
       hash: md5
       md5: 0a761876ca39cd5507296e3db383b353
       size: 4923
-    - path: params.yaml
+    - path: Data_Pipeline/params.yaml
       hash: md5
       md5: 2f5b2d8c46c6e40d3da6938edae43180
       size: 939
@@ -85,7 +85,7 @@ stages:
       hash: md5
       md5: aa16eacaa171c1a50012aa7a2f431b26
       size: 1743
-    - path: params.yaml
+    - path: Data_Pipeline/params.yaml
       hash: md5
       md5: 2f5b2d8c46c6e40d3da6938edae43180
       size: 939
@@ -113,7 +113,7 @@ stages:
       hash: md5
       md5: 632ad5a54453cf74d7e775c46d7a574c
       size: 2929
-    - path: params.yaml
+    - path: Data_Pipeline/params.yaml
       hash: md5
       md5: 2f5b2d8c46c6e40d3da6938edae43180
       size: 939
@@ -141,7 +141,7 @@ stages:
       hash: md5
       md5: e911e674fe8193587bea789f91b7a40f
       size: 2899
-    - path: params.yaml
+    - path: Data_Pipeline/params.yaml
       hash: md5
       md5: 2f5b2d8c46c6e40d3da6938edae43180
       size: 939

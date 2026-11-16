@@ -11,8 +11,11 @@ def setup_logger():
                         format="%(asctime)s [%(levelname)s] %(message)s")
 
 
+# params.yaml sits next to scripts/; resolve it so the stage works from any working directory.
+PARAMS_FILE = Path(__file__).resolve().parents[1] / "params.yaml"
+
 def load_params():
-    with open("params.yaml") as f:
+    with open(PARAMS_FILE) as f:
         return yaml.safe_load(f)
 
 
