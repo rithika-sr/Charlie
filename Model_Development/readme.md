@@ -220,23 +220,48 @@ artifactregistry.googleapis.com/projects/charlie-478223/...
 
 ### 🔁 12. CI/CD (GitHub Actions)
 
-Pipeline file:
-``` bash
-.github/workflows/mlops_pipeline.yml
-``` 
-Automated steps:
+Pipeline file: `.github/workflows/charlie_mbta_ci.yml`. It has two jobs.
 
-✔ Train model
-✔ Tune model
-✔ Bias analysis
-✔ Explainability
-✔ Drift monitoring
-✔ Upload artifacts
-✔ Register model
-✔ Push to GCP
+**ML validation** runs on every pull request and every push to `main`. It needs no cloud credentials. Its steps run in order, and any failure fails the job; nothing is skipped or masked:
 
+1. Install the pinned dependencies from `Model_Development/requirements-ci.txt`.
+2. Fetch the training data pinned in `dvc.lock` from the DVC remote (see below).
+3. Check the data (`check_data.py`): all three processed files exist, meet the `min_rows` in `ml_configs/paths.yaml`, and match the md5 recorded in `dvc.lock`.
+4. Train, tune, select, register in a local MLflow store, then run bias analysis, explainability (SHAP and LIME) and drift monitoring.
+5. Upload `Model_Development/models/`, `reports/` and `mlruns/` as the `model-development-outputs` artifact.
 
-⸻
+**Upload model to GCP Artifact Registry** runs only on pushes to `main`, and only after ML validation passed. It uploads the model that run just validated. It needs the `GCP_SA_KEY` secret, and fails visibly if the secret is missing. A successful cloud login therefore never means validation ran: the upload can't start unless validation succeeded.
+
+#### Training data in CI
+
+The processed data (`Data_Pipeline/data/processed/*.csv`) isn't in git. It is versioned by `dvc.lock` and must be stored in a DVC remote that CI can read. Until a remote is set up, ML validation fails at **Fetch pinned training data**. That is intentional: missing data is reported, never skipped.
+
+To set it up, with the data matching `dvc.lock` in your checkout:
+
+```bash
+dvc remote add -d storage gs://<bucket>/charlie-dvc   # a bucket the team controls
+dvc push preprocess                                   # uploads the files pinned in dvc.lock
+```
+
+Then, in the GitHub repository settings:
+
+- **Variable** `DVC_REMOTE_URL`: the same `gs://…` URL.
+- **Secret** `DVC_REMOTE_CREDENTIALS`: a service-account JSON key with **read-only** access to that bucket. Keep it separate from `GCP_SA_KEY`, which can upload models.
+
+Notes:
+
+- If nobody still has the files that match `dvc.lock`, they can't be recovered. The fetch stage calls the live MBTA API, so `dvc repro` produces a new snapshot, not the old one. In that case, regenerate the data, commit the new `dvc.lock`, and push that data instead.
+- Secrets aren't available to pull requests from forks, so ML validation fails on those at the fetch step.
+
+#### What CI validation does and doesn't prove
+
+A passing ML validation job means the pipeline ran end to end on the pinned data and every step succeeded. It does **not** show that the model predicts delays. Two known modeling problems make the reported scores (including the ROC-AUC of 0.81) unreliable. Each is for its own modeling PR, and this CI change deliberately leaves both alone:
+
+- **The delay label measures dwell time, not lateness.** `model_train.prepare_data` defines `delayed` as `departure_time − arrival_time > 5 min` from MBTA *predictions*. That is the time a vehicle is expected to spend at a stop, not its delay against a schedule. In the committed `models/reference_stats.json`, 5 of 127,159 rows are positive.
+- **The evaluation leaks:**
+  - `model_tuning` applies SMOTE to the whole dataset before `train_test_split`, so synthetic copies of the few positives land on both sides of the split.
+  - The split is random, on time-ordered snapshots.
+  - `model_select` scores every candidate on the full dataset, training rows included, and picks the winner by that score.
 
 ### 🧪 13. Run Everything Locally
 ``` bash

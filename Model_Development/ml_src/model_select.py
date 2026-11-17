@@ -15,6 +15,7 @@ from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from Model_Development.ml_src.data_loader import DataPaths
 from Model_Development.ml_src.model_train import prepare_data
 from Model_Development.ml_src.utils.logging import get_logger
+from Model_Development.ml_src.utils.mlflow_models import log_sklearn_model
 
 logger = get_logger("model_select")
 
@@ -155,12 +156,13 @@ def main():
             mlflow.log_artifact(str(comparison_json))
             mlflow.log_artifact(str(comparison_plot))
 
-            mlflow.sklearn.log_model(best_model, "final_model")
+            log_sklearn_model(best_model, "final_model")
 
         logger.info("📌 Model selection logged to MLflow.")
 
     except Exception as e:
-        logger.warning(f"⚠️ MLflow logging failed: {e}")
+        logger.error(f"❌ MLflow logging failed: {e}")
+        raise SystemExit(1)
 
     logger.info("🎯 Model Selection Completed Successfully!")
 

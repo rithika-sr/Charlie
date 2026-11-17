@@ -27,8 +27,8 @@ def main():
 
     model_path = next((p for p in model_path_candidates if os.path.exists(p)), None)
     if not model_path:
-        logger.warning("⚠️ No model found. Skipping bias analysis.")
-        return
+        logger.error("❌ No trained model found for bias analysis. Run model_train.py first.")
+        raise SystemExit(1)
 
     model = joblib.load(model_path)
     logger.info(f"📦 Loaded model from {model_path}")
@@ -40,8 +40,8 @@ def main():
     try:
         df_pred = paths.load_all()["predictions"]
     except Exception as e:
-        logger.warning(f"⚠️ Data missing. Skipping bias analysis. {e}")
-        return
+        logger.error(f"❌ Cannot load processed data for bias analysis: {e}")
+        raise SystemExit(1)
 
     # -----------------------
     # Prepare data (FIXED)
@@ -49,8 +49,8 @@ def main():
     df_eng, X, y = prepare_data(df_pred)
 
     if "direction_id" not in X.columns:
-        logger.warning("⚠️ direction_id missing. Skipping bias check.")
-        return
+        logger.error("❌ direction_id missing from the features; bias analysis can't run.")
+        raise SystemExit(1)
 
     sensitive = X["direction_id"]
     y_pred = model.predict(X)

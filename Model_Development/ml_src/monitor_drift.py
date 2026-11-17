@@ -76,7 +76,7 @@ def run_drift_monitoring():
 
     if not os.path.exists(REFERENCE_FILE):
         logger.error("❌ Reference stats missing. Run model_train.py first.")
-        return
+        raise SystemExit(1)
 
     # Load reference stats
     with open(REFERENCE_FILE, "r") as f:

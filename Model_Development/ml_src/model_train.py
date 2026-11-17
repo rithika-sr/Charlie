@@ -20,6 +20,7 @@ from lightgbm import LGBMClassifier
 
 from Model_Development.ml_src.data_loader import DataPaths
 from Model_Development.ml_src.utils.logging import get_logger
+from Model_Development.ml_src.utils.mlflow_models import log_sklearn_model
 
 logger = get_logger("train_model")
 
@@ -66,7 +67,7 @@ def main():
         df_pred = paths.load_all()["predictions"]
     except Exception as e:
         logger.error(f"❌ Failed to load processed data: {e}")
-        return
+        raise SystemExit(1)
 
     logger.info(f"📥 Loaded predictions: {df_pred.shape}")
 
@@ -77,7 +78,7 @@ def main():
 
     if len(X) == 0:
         logger.error("❌ No valid rows after preprocessing.")
-        return
+        raise SystemExit(1)
 
     X_train, X_val, y_train, y_val = train_test_split(
         X, y, test_size=0.2, stratify=y, random_state=42
@@ -120,7 +121,7 @@ def main():
         # Log metrics + params
         mlflow.log_params(model.get_params())
         mlflow.log_metrics(metrics)
-        mlflow.sklearn.log_model(model, "baseline_lgbm_model")
+        log_sklearn_model(model, "baseline_lgbm_model")
 
         # -------------------------------
         # SAVE MODEL (CORRECT DIRECTORY)

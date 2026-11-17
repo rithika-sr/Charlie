@@ -249,7 +249,7 @@ The repo also contains the course MLOps pipeline that predicts train-delay proba
 | Data pipeline | [`Data_Pipeline/`](Data_Pipeline/readme.md) | Airflow DAGs to collect, process and validate MBTA data (TFDV and Great Expectations), with DVC versioning and Fairlearn bias checks |
 | Model development | [`Model_Development/`](Model_Development/readme.md) | Logistic Regression and LightGBM, tuning with SMOTE, MLflow tracking, SHAP and LIME, fairness, Evidently drift. Tuned Logistic Regression was selected (ROC-AUC **0.81**, per `reports/model_comparison.json`) |
 | Monitoring & retraining | [`monitoring/`](monitoring/README.md), [`retraining/`](retraining/) | Prometheus-style metrics. Retraining triggers on PSI drift and promotes a model only if its AUC improves |
-| CI | [`.github/workflows/charlie_mbta_ci.yml`](.github/workflows/charlie_mbta_ci.yml) | Train, tune, select, register, run bias, explainability and drift checks, and upload the reports |
+| CI | [`.github/workflows/charlie_mbta_ci.yml`](.github/workflows/charlie_mbta_ci.yml) | ML validation (no cloud credentials): fetch the DVC-pinned data, check it, then train, tune, select, register locally, and run bias, explainability and drift checks; any failure, including missing data, fails the job. A separate job uploads the validated model to GCP, only on `main` and only after validation passes. It needs a DVC remote to be configured first (see [Training data in CI](Model_Development/readme.md#training-data-in-ci)). |
 
 ---
 
