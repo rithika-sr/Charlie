@@ -34,7 +34,7 @@ function caveatsHtml(j) {
   const list = j.caveats || [];
   if (!list.length) return '';
   return `<ul class="journey__caveats plain-list">${list.map(c =>
-    `<li>${icon(c.kind === 'accessibility' ? 'accessible' : c.kind === 'time' ? 'clock' : 'info', { size: 14 })}<span>${e(c.text)}</span></li>`).join('')}</ul>`;
+    `<li>${icon(c.kind === 'accessibility' ? 'accessible' : c.kind === 'time' || c.kind === 'when' ? 'clock' : 'info', { size: 14 })}<span>${e(c.text)}</span></li>`).join('')}</ul>`;
 }
 
 function candidateChips(i, field, names, stations) {

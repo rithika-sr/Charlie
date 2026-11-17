@@ -15,6 +15,10 @@ plan() result "code" is one of:
   same_place          origin and destination are the same station
   no_itineraries      both places were found and a router answered, with no trips
   routing_unavailable every routing service failed (network/HTTP error), so nothing is known
+
+A requested time (when, arrive_by) goes to providers that accept it. Trips that have
+already left are dropped, and an "arrive by" that no trip can still make returns the
+soonest arrivals with missed_deadline set.
 """
 
 from datetime import datetime
@@ -38,9 +42,12 @@ def _coords(value):
         return None
 
 
-def resolve_endpoint(text, *, stop_id=None, coords=None, stations, aliases, station_by_id):
-    """Local resolution only (no network): a station, explicit coordinates, a list of
-    candidate stations, or 'needs geocoding'."""
+def resolve_endpoint(text, *, stop_id=None, coords=None, stations, aliases, station_by_id, landmark=None):
+    """Local resolution only (no network): a station, explicit coordinates, a known
+    landmark, a list of candidate stations, or 'needs geocoding'.
+
+    landmark(text) -> {"name", "coords"} | None covers places riders name that the
+    geocoder misses ("BU", "Fenway Park"); a station match still wins."""
     text = (text or "").strip()
     if stop_id:
         station = station_by_id(stop_id)
@@ -54,6 +61,11 @@ def resolve_endpoint(text, *, stop_id=None, coords=None, stations, aliases, stat
     if found["status"] == "ok":
         return {"status": "ok", "kind": "station", "query": text, "match": found["match"],
                 "similar": found.get("similar", []), **places.station_record(found["name"], stations)}
+    mark = landmark(text) if landmark and text else None
+    point = _coords(mark["coords"]) if mark else None
+    if point:
+        return {"status": "ok", "kind": "place", "query": text, "name": mark["name"],
+                "id": None, "lat": point[0], "lon": point[1], "lines": []}
     if found["status"] == "ambiguous":
         return {"status": "ambiguous", "query": text,
                 "candidates": [places.station_record(n, stations) for n in found["candidates"]]}
@@ -80,18 +92,19 @@ def public_endpoint(ep):
 
 
 def plan(origin, destination, *, stations, aliases, station_by_id, geocode, providers, annotate,
-         now=None, origin_id=None, dest_id=None, origin_coords=None, dest_coords=None):
-    """Plan a journey. providers: [(name, fn(origin_ep, dest_ep) -> routes)], tried in order;
-    fn raises RoutingError when its service fails and returns [] when it found nothing."""
+         now=None, origin_id=None, dest_id=None, origin_coords=None, dest_coords=None,
+         landmark=None, when=None, arrive_by=False):
+    """Plan a journey. providers: [(name, fn(origin_ep, dest_ep, **time) -> routes)], tried
+    in order; fn raises RoutingError when its service fails and returns [] when it found
+    nothing. With a requested time, fn is called with when= and arrive_by=; the caller
+    leaves out providers that can't plan for a time."""
     now = now or datetime.now()
-    eps = {
-        "origin": resolve_endpoint(origin, stop_id=origin_id, coords=origin_coords, stations=stations,
-                                   aliases=aliases, station_by_id=station_by_id),
-        "destination": resolve_endpoint(destination, stop_id=dest_id, coords=dest_coords, stations=stations,
-                                        aliases=aliases, station_by_id=station_by_id),
-    }
+    arrive_by = bool(arrive_by and when)
+    resolve = lambda text, sid, xy: resolve_endpoint(text, stop_id=sid, coords=xy, stations=stations, aliases=aliases,
+                                                     station_by_id=station_by_id, landmark=landmark)
+    eps = {"origin": resolve(origin, origin_id, origin_coords), "destination": resolve(destination, dest_id, dest_coords)}
     result = {"origin": None, "destination": None, "routes": [], "notices": [], "alerts_checked": False,
-              "provider": None, "providers_tried": [], "checked_at": now.isoformat()}
+              "provider": None, "providers_tried": [], "checked_at": now.isoformat(), "missed_deadline": False}
 
     def done(code, **extra):
         result.update({f: public_endpoint(eps[f]) for f in FIELDS})
@@ -114,18 +127,31 @@ def plan(origin, destination, *, stations, aliases, station_by_id, geocode, prov
     if o.get("id") and o.get("id") == d.get("id"):
         return done("same_place")
 
-    routes, answered, errors = [], [], []
-    for name, fn in providers:
-        result["providers_tried"].append(name)
-        try:
-            found = fn(o, d) or []
-        except RoutingError as e:
-            errors.append(str(e))
-            continue
-        answered.append(name)
-        if found:
-            routes, result["provider"] = found, name
-            break
+    cutoff = now.timestamp() - 60
+
+    def route_with(time_kw):
+        routes, answered, errors = [], [], []
+        for name, fn in providers:
+            if name not in result["providers_tried"]:
+                result["providers_tried"].append(name)
+            try:
+                found = fn(o, d, **time_kw) or []
+            except RoutingError as e:
+                errors.append(str(e))
+                continue
+            answered.append(name)
+            # Never offer a trip that has already left.
+            found = [r for r in found if not isinstance(r.get("depart_ts"), (int, float)) or r["depart_ts"] >= cutoff]
+            if found:
+                routes, result["provider"] = found, name
+                break
+        return routes, answered, errors
+
+    routes, answered, errors = route_with({"when": when, "arrive_by": arrive_by} if when else {})
+    if arrive_by and answered and not routes:
+        # No trip leaving now makes the deadline: say so and show the soonest arrivals.
+        routes, answered, errors = route_with({})
+        result["missed_deadline"] = bool(answered)
 
     if not answered:
         return done("routing_unavailable",

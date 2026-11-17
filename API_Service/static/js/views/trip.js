@@ -4,7 +4,7 @@ import { api } from '../core/api.js';
 import { store } from '../core/store.js';
 import { escapeHtml as e } from '../core/format.js';
 import { alertsForRoutes, effectLabel } from '../core/alerts.js';
-import { tripFormHtml, bindTripForm } from '../ui/trip-form.js';
+import { tripFormHtml, bindTripForm, whenText } from '../ui/trip-form.js';
 import { tripOptionCard, emptyState, errorState, skeleton, sectionHeader } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import { createRequestGate } from '../core/request-gate.js';
@@ -13,7 +13,7 @@ const gate = createRequestGate();
 let lastQuery = null;
 let lastRoutes = null;
 let lastNotices = [];
-let lastAlertsChecked = true;
+let lastMeta = {};
 
 /** Map a trip step's display name to MBTA route ids, for alert matching. */
 export function routeIdsForStep(step) {
@@ -34,6 +34,8 @@ export const SORTS = [
   { id: 'transfers', name: 'Fewest transfers' },
   { id: 'walking', name: 'Least walking' },
 ];
+// Only offered for "Arrive by" searches, where it is the default (leave as late as possible).
+export const LATEST_DEPARTURE = { id: 'departure', name: 'Latest departure' };
 
 // Numeric metric per sort. Missing timestamps sort last instead of guessing.
 const METRICS = {
@@ -41,6 +43,7 @@ const METRICS = {
   duration: r => (Number.isFinite(r.duration) ? r.duration : Infinity),
   transfers: r => (Number.isFinite(r.transfers) ? r.transfers : Infinity),
   walking: r => (Number.isFinite(r.walk_time) ? r.walk_time : 0),
+  departure: r => (Number.isFinite(r.depart_ts) ? -r.depart_ts : Infinity),
 };
 const TIEBREAK = ['arrival', 'duration', 'transfers', 'walking'];
 
@@ -54,6 +57,7 @@ const CHAINS = {
   duration: [METRICS.duration, METRICS.arrival, METRICS.transfers, METRICS.walking],
   transfers: [METRICS.transfers, METRICS.arrival, METRICS.duration, METRICS.walking],
   walking: [METRICS.walking, METRICS.arrival, METRICS.duration, METRICS.transfers],
+  departure: [METRICS.departure, METRICS.transfers, METRICS.walking, METRICS.arrival],
 };
 
 /** Sort itineraries by `by` (default: earliest arrival); the routing service's order breaks final ties. */
@@ -113,6 +117,7 @@ export function tripAlertText(a) {
 }
 
 let sortBy = 'arrival';
+const sortsFor = meta => (meta.when?.mode === 'arrive' && !meta.missedDeadline ? [LATEST_DEPARTURE, ...SORTS] : SORTS);
 
 export function noticeHtml(n) {
   const where = n.role === 'destination' ? 'your destination' : 'your starting point';
@@ -125,14 +130,23 @@ export function noticeHtml(n) {
   </div>`;
 }
 
-function renderResults(el, unsorted, notices = [], alertsChecked = true) {
+/** "Leaving now" / "Leave today at 6:10 PM" line above the options, plus a missed "arrive by". */
+export function whenSummaryHtml(meta = {}) {
+  const label = meta.when ? whenText(meta.when) : 'Leaving now';
+  const missed = meta.missedDeadline
+    ? `<div class="trip-notice" role="note">${icon('clock', { size: 18 })}<div><strong>No trip gets you there by that time.</strong><span> These are the soonest arrivals if you leave now.</span></div></div>` : '';
+  return `${missed}<p class="trip-when__summary">${icon('clock', { size: 16 })}<span>${e(meta.missedDeadline ? 'Leaving now' : label)}</span></p>`;
+}
+
+function renderResults(el, unsorted, notices = [], meta = {}) {
   const routes = sortTrips(unsorted, sortBy);
   const legacyAlerts = store.get('alerts') || [];
   const badges = tripBadges(routes);
   el.innerHTML = `
+    ${whenSummaryHtml(meta)}
     ${notices.map(noticeHtml).join('')}
     ${sectionHeader(`${routes.length} option${routes.length === 1 ? '' : 's'}`)}
-    ${routes.length > 1 ? `<div class="segmented segmented--scroll trip-sort" role="group" aria-label="Sort trip options">${SORTS.map(s =>
+    ${routes.length > 1 ? `<div class="segmented segmented--scroll trip-sort" role="group" aria-label="Sort trip options">${sortsFor(meta).map(s =>
       `<button class="segmented__btn" data-sort="${s.id}" aria-pressed="${s.id === sortBy}">${e(s.name)}</button>`).join('')}</div>` : ''}
     <div class="stack">${routes.map((r, i) => {
       let affected;
@@ -147,11 +161,11 @@ function renderResults(el, unsorted, notices = [], alertsChecked = true) {
       }
       return tripOptionCard(r, i, { badges: badges[i], alerts: affected, note: arrivalNote(r, routes) });
     }).join('')}</div>
-    ${alertsChecked ? '' : `<p class="fine-print" role="note">${icon('alert', { size: 14 })}Service alerts couldn’t be checked for these options, so disruptions may not be shown.</p>`}
+    ${meta.alertsChecked !== false ? '' : `<p class="fine-print" role="note">${icon('alert', { size: 14 })}Service alerts couldn’t be checked for these options, so disruptions may not be shown.</p>`}
     <p class="fine-print">${icon('info', { size: 14 })}Journey times come from the routing service and are estimates. Fares are estimated. Check alerts before you travel.</p>`;
   el.querySelectorAll('[data-sort]').forEach(btn => btn.addEventListener('click', () => {
     sortBy = btn.dataset.sort;
-    renderResults(el, unsorted, notices, alertsChecked);
+    renderResults(el, unsorted, notices, meta);
     el.querySelector(`[data-sort="${sortBy}"]`)?.focus();
   }));
 }
@@ -168,10 +182,16 @@ async function search(resultsEl, q, formApi) {
   if (q.destination.lat != null) body.dest_coords = `${q.destination.lat},${q.destination.lon}`;
   if (q.origin.id) body.origin_id = q.origin.id;
   if (q.destination.id) body.dest_id = q.destination.id;
+  if (q.when && q.when.mode !== 'now') { body.when = q.when.time; body.arrive_by = q.when.mode === 'arrive'; }
   const { data, error, aborted } = await api.trip(body, { signal });
   // Never let an older or invalidated response overwrite the current endpoints' state.
   if (aborted || !gate.isCurrent(token)) return;
   resultsEl.removeAttribute('aria-busy');
+  if (error && /already passed|time isn’t valid|within the next/i.test(error)) {
+    formApi?.whenError(error);
+    resultsEl.innerHTML = emptyState({ icon: 'clock', title: 'Pick a different time', body: error });
+    return;
+  }
   if (error) {
     resultsEl.innerHTML = errorState({ title: 'The trip planner couldn’t be reached', body: error });
     resultsEl.querySelector('[data-action="retry"]').addEventListener('click', () => search(resultsEl, q, formApi));
@@ -212,15 +232,19 @@ async function search(resultsEl, q, formApi) {
     resultsEl.innerHTML = emptyState({ icon: 'route', title: 'Start and destination are the same', body: 'Choose a different destination.' });
     return;
   }
+  const meta = { when: q.when && q.when.mode !== 'now' ? q.when : null, missedDeadline: !!data.missed_deadline, alertsChecked: data.alerts_checked !== false };
   if (!data.routes || !data.routes.length) {
-    resultsEl.innerHTML = `${(data.notices || []).map(noticeHtml).join('')}${emptyState({ icon: 'route', title: 'No transit options for this trip right now', body: 'Both places were found, but the routing service returned no itineraries. Service may have ended for the night, or try a nearby station.' })}`;
+    resultsEl.innerHTML = `${whenSummaryHtml(meta)}${(data.notices || []).map(noticeHtml).join('')}${emptyState({ icon: 'route', title: 'No transit options for this trip right now', body: 'Both places were found, but the routing service returned no itineraries. Service may have ended for the night, or try a nearby station.' })}`;
     return;
   }
   store.rememberTrip({ origin: q.origin, destination: q.destination });
   lastRoutes = data.routes;
   lastNotices = data.notices || [];
-  lastAlertsChecked = data.alerts_checked !== false;
-  renderResults(resultsEl, data.routes, lastNotices, lastAlertsChecked);
+  lastMeta = meta;
+  // Arrive-by: leave as late as possible first; otherwise keep the rider's chosen sort.
+  if (meta.when?.mode === 'arrive' && !meta.missedDeadline) sortBy = 'departure';
+  else if (sortBy === 'departure') sortBy = 'arrival';
+  renderResults(resultsEl, data.routes, lastNotices, meta);
 }
 
 /** An endpoint changed: drop in-flight work and any results that no longer match the form. */
@@ -228,11 +252,12 @@ function invalidateResults(resultsEl, form) {
   gate.invalidate();
   lastRoutes = null;
   lastNotices = [];
+  lastMeta = {};
   if (!resultsEl.hasAttribute('data-has-results')) return;   // still the initial "Where to?" state
   resultsEl.removeAttribute('data-has-results');
   resultsEl.removeAttribute('aria-busy');
   resultsEl.innerHTML = emptyState({ icon: 'route', title: 'Plan your updated trip',
-    body: 'Your starting point or destination changed. Select Plan journey to see options for this trip.' });
+    body: 'Your trip details changed. Select Plan journey to see options for this trip.' });
 }
 
 export const tripView = {
@@ -244,7 +269,7 @@ export const tripView = {
       <div class="page page--split">
         <section class="page__aside">
           <header class="page-head"><h1>Trip Planner</h1><p class="muted">Door-to-door transit directions across subway, bus, Commuter Rail and ferry.</p></header>
-          <div class="card card--pad">${tripFormHtml({ large: true })}</div>
+          <div class="card card--pad">${tripFormHtml({ large: true, timeOptions: true })}</div>
           ${recents.length ? `<div class="card card--pad"><h2 class="subhead">Recent trips</h2><ul class="plain-list recent-trips">${recents.map((t, i) =>
             `<li><button class="link-row" data-recent="${i}">${icon('history', { size: 16 })}<span>${e(t.origin.name)} → ${e(t.destination.name)}</span></button></li>`).join('')}</ul></div>` : ''}
         </section>
@@ -254,7 +279,8 @@ export const tripView = {
       </div>`;
     const results = el.querySelector('[data-results]');
     const form = el.querySelector('[data-trip-form]');
-    const initial = { origin: pending.origin || lastQuery?.origin, destination: pending.destination || lastQuery?.destination };
+    const initial = { origin: pending.origin || lastQuery?.origin, destination: pending.destination || lastQuery?.destination,
+      when: pending.origin || pending.destination ? pending.when : lastQuery?.when };
     const formApi = bindTripForm(form, { initial, onSubmit: q => search(results, q, formApi), onChange: () => invalidateResults(results, form) });
     el.querySelectorAll('[data-recent]').forEach(btn => btn.addEventListener('click', () => {
       const t = recents[Number(btn.dataset.recent)];
@@ -262,11 +288,11 @@ export const tripView = {
       Object.assign(form.querySelector('[name="origin"]').dataset, t.origin.lat != null ? { lat: t.origin.lat, lon: t.origin.lon, id: t.origin.id || '' } : {});
       form.querySelector('[name="destination"]').value = t.destination.name;
       Object.assign(form.querySelector('[name="destination"]').dataset, t.destination.lat != null ? { lat: t.destination.lat, lon: t.destination.lon, id: t.destination.id || '' } : {});
-      search(results, t, formApi);
+      search(results, { ...t, when: formApi.readWhen() }, formApi);
     }));
-    if (pending.origin && pending.destination) search(results, { origin: pending.origin, destination: pending.destination }, formApi);
+    if (pending.origin && pending.destination) search(results, { origin: pending.origin, destination: pending.destination, when: pending.when || null }, formApi);
     else if (pending.origin || pending.destination) form.querySelector(pending.origin ? '[name="destination"]' : '[name="origin"]').focus();
-    else if (lastQuery && lastRoutes) { results.setAttribute('data-has-results', ''); renderResults(results, lastRoutes, lastNotices, lastAlertsChecked); }
+    else if (lastQuery && lastRoutes) { results.setAttribute('data-has-results', ''); renderResults(results, lastRoutes, lastNotices, lastMeta); }
   },
   leave() { gate.abort(); },
 };

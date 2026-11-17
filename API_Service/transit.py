@@ -285,3 +285,46 @@ def station_closures(alerts, station_id, at_start, at_end):
         })
     found.sort(key=lambda a: -a["severity"])
     return found
+
+
+# ==================== NEARBY DEPARTURES ====================
+
+WALK_M_PER_MIN = 80          # ~3 mph
+WALK_DETOUR = 1.3            # streets are longer than the straight line
+
+
+def walk_minutes(distance_m):
+    """Rough walking time to a stop from its straight-line distance."""
+    if distance_m is None:
+        return None
+    return max(1, int(-(-(distance_m * WALK_DETOUR) // WALK_M_PER_MIN)))
+
+
+def nearest_stop_departures(predictions, stops, per_group=3, max_groups=8):
+    """For each (route, direction), the soonest predictions at the nearest stop that has any.
+
+    predictions: time-sorted rows with route_id, direction_id and stop_id (and optionally
+    parent_id when the stop is a platform of a station in `stops`).
+    stops: {stop_id: {"name", "distance"}}.
+    Returns groups sorted nearest stop first, then by the soonest departure."""
+    groups = {}
+    for p in predictions:
+        sid = p.get("stop_id") if p.get("stop_id") in stops else p.get("parent_id")
+        if sid not in stops:
+            continue
+        key = (p.get("route_id"), p.get("direction_id"))
+        dist = stops[sid].get("distance") or 0
+        g = groups.get(key)
+        if g is None or dist < g["distance"]:
+            groups[key] = g = {"route_id": key[0], "route_name": p.get("route_name", ""), "direction_id": key[1],
+                               "stop_id": sid, "stop_name": stops[sid].get("name", ""), "distance": dist,
+                               "headsigns": [], "items": []}
+        if sid != g["stop_id"]:
+            continue
+        if p.get("headsign") and p["headsign"] not in g["headsigns"]:
+            g["headsigns"].append(p["headsign"])
+        if len(g["items"]) < per_group:
+            g["items"].append(p)
+    ordered = sorted(groups.values(), key=lambda g: (g["distance"], parse_time(g["items"][0].get("time")).timestamp()
+                                                      if g["items"] and parse_time(g["items"][0].get("time")) else 0))
+    return ordered[:max_groups]

@@ -24,6 +24,7 @@ import arrivals
 import assistant
 import journey
 import places
+import trips
 
 # Load Environment Variables
 load_dotenv()
@@ -849,7 +850,23 @@ def answer_arrivals(parsed):
     answer = {"status": "ok", "route": route_filter, "route_label": arrivals.route_label(route_filter, []),
               "toward": None, "groups": [], "alerts": []}
 
+    if parsed.get("near_point"):
+        lat, lon = (float(x) for x in parsed["near_point"].split(","))
+        return answer_near(parsed, lat, lon, place=parsed.get("near_place"))
+    if parsed.get("near_me") or not parsed.get("station_query"):
+        return answer_near(parsed)
+    is_bus = bool(route_filter) and (route_filter[:1].isdigit() or route_filter == "SILVER")
+
     resolved = arrivals.resolve_station(parsed["station_query"], STATION_DATA, STATION_ALIASES)
+    if resolved["status"] == "unknown" and is_bus:
+        # A bus stop or street, not a station ("next 39 at Huntington Ave and Opera Pl").
+        try:
+            point = _resolve_place(parsed["station_query"])
+        except RoutingError:
+            point = None
+        if point:
+            lat, lon = (float(x) for x in point.split(","))
+            return answer_near(parsed, lat, lon, place=parsed["station_query"].title())
     if resolved["status"] != "ok":
         answer.update(resolved)
         return answer
@@ -866,6 +883,10 @@ def answer_arrivals(parsed):
     answer["checked_text"] = now.strftime("%-I:%M %p")
 
     preds = [p for p in preds if arrivals.route_matches(route_filter, p["route_id"])]
+    data = STATION_DATA.get(station["name"]) or {}
+    if not preds and is_bus and data.get("lat") is not None:
+        # Buses often stop on the street outside a station, not at the station itself.
+        return answer_near(parsed, data["lat"], data["lon"], place=station["name"])
 
     # Direction: a headsign/destination ("toward Ashmont") or a compass word ("southbound").
     toward = parsed.get("toward")
@@ -934,6 +955,169 @@ def answer_arrivals(parsed):
     return answer
 
 
+SILVER_ROUTES = ["741", "742", "743", "746", "749", "751"]
+NEAR_ROUTE_RADIUS_M = 1200     # how far to look for a stop on a named route
+NEAR_ANY_RADIUS_M = 700        # "what's leaving near me" — stops within an easy walk
+
+
+def route_ids_for(route_filter):
+    """MBTA route ids behind a parsed route filter (None means every route)."""
+    if not route_filter:
+        return None
+    if route_filter == "Green":
+        return ["Green-B", "Green-C", "Green-D", "Green-E"]
+    if route_filter == "SILVER":
+        return list(SILVER_ROUTES)
+    if route_filter == "CR":
+        return list(COMMUTER_RAIL_LINES)
+    return [route_filter]
+
+
+def route_display_name(route_id, meta):
+    if route_id in SUBWAY_ROUTES:
+        return arrivals.route_label(route_id, [])
+    if route_id[:1].isdigit():
+        return f"Route {meta.get('short_name') or route_id}" if route_id not in SILVER_ROUTES else meta.get("short_name") or route_id
+    return meta.get("long_name") or meta.get("short_name") or route_id
+
+
+def stops_near(lat, lon, route_ids=None, radius_m=NEAR_ROUTE_RADIUS_M):
+    """Stops within radius_m of a point (optionally only on some routes), nearest first."""
+    params = {"filter[latitude]": round(float(lat), 5), "filter[longitude]": round(float(lon), 5),
+              "filter[radius]": round(radius_m / 111000, 5), "sort": "distance", "page[limit]": 40}
+    if route_ids:
+        params["filter[route]"] = ",".join(route_ids)
+    else:
+        params["filter[location_type]"] = "0"          # boarding stops and platforms
+    data = mbta_request(f"{BASE_URL}/stops", params=params).json().get('data', [])
+    stops = {}
+    for s in data:
+        a = s.get('attributes', {})
+        if a.get('latitude') is None:
+            continue
+        d = haversine_distance(float(lat), float(lon), a['latitude'], a['longitude'])
+        if d <= radius_m * 1.05:
+            stops[s['id']] = {"id": s['id'], "name": a.get('name', ''), "distance": round(d),
+                              "lat": a['latitude'], "lon": a['longitude']}
+    return dict(sorted(stops.items(), key=lambda kv: kv[1]["distance"]))
+
+
+def direction_filter(preds, toward, direction, meta):
+    """Predictions heading toward a place (headsign, then the route's direction names)."""
+    if direction is not None:
+        return [p for p in preds if p["direction_id"] == direction[1]]
+    if not toward:
+        return preds
+    matched = transit.filter_toward(preds, toward)
+    if matched:
+        return matched
+    t = toward.lower()
+    keep = []
+    for p in preds:
+        dests = meta(p["route_id"]).get("direction_destinations") or []
+        d = p.get("direction_id")
+        if isinstance(d, int) and d < len(dests) and dests[d] and (t in dests[d].lower() or dests[d].lower() in t):
+            keep.append(p)
+    if keep:
+        return keep
+    station = arrivals.resolve_station(toward, STATION_DATA, STATION_ALIASES)
+    if station["status"] == "ok":
+        return transit.filter_toward(preds, station["name"])
+    return None                                         # not a destination we can match ("how long")
+
+
+def answer_near(parsed, lat=None, lon=None, place=None):
+    """Next departures at the nearest stops to a point: a named route ("next 39 toward Back
+    Bay near me") or every route ("what's leaving near me?"). Defaults to the rider's location."""
+    now = get_now()
+    route_filter = parsed.get("route")
+    answer = {"status": "ok", "kind": "near", "route": route_filter,
+              "route_label": arrivals.route_label(route_filter, []), "toward": None, "groups": [], "alerts": [],
+              "place": place}
+    if lat is None or lon is None:
+        lat, lon = g.location.get("lat"), g.location.get("lon")
+    if lat is None or lon is None:
+        answer["status"] = "need_location"
+        return answer
+    answer["point"] = f"{float(lat):.5f},{float(lon):.5f}"
+    route_ids = route_ids_for(route_filter)
+    radius = NEAR_ROUTE_RADIUS_M if route_ids else NEAR_ANY_RADIUS_M
+    answer["radius_m"] = radius
+    try:
+        stops = stops_near(lat, lon, route_ids, radius)
+        if not stops:
+            answer["status"] = "no_stops"
+            return answer
+        ids = list(stops)[:25]
+        params = {"filter[stop]": ",".join(ids), "include": "route,trip,stop", "page[limit]": 200}
+        if route_ids:
+            params["filter[route]"] = ",".join(route_ids)
+        preds = prediction_rows(mbta_request(f"{BASE_URL}/predictions", params=params).json(), now)
+    except Exception as e:
+        print(f"Nearby departures unavailable: {e}")
+        answer["status"] = "unavailable"
+        return answer
+    answer["updated_at"] = now.isoformat()
+    answer["checked_text"] = now.strftime("%-I:%M %p")
+    # Platforms of a station on the route: map them back to the station we found.
+    names = {s["name"].lower(): sid for sid, s in stops.items()}
+    for p in preds:
+        if p["stop_id"] not in stops and p.get("parent_id") not in stops and p.get("stop_name", "").lower() in names:
+            p["parent_id"] = names[p["stop_name"].lower()]
+    preds = [p for p in preds if arrivals.route_matches(route_filter, p["route_id"])]
+
+    metas = {}
+    def meta(rid):
+        if rid not in metas:
+            metas[rid] = route_meta(rid)
+        return metas[rid]
+
+    toward = parsed.get("toward")
+    filtered = direction_filter(preds, toward, parsed.get("direction"), meta)
+    if filtered is None:
+        filtered = preds
+    elif toward:
+        found = arrivals.resolve_station(toward, STATION_DATA, STATION_ALIASES)
+        answer["toward"] = found["name"] if found["status"] == "ok" else toward.title()
+    elif parsed.get("direction") is not None:
+        answer["toward"] = parsed.get("direction_word")
+
+    groups = transit.nearest_stop_departures(filtered, stops, per_group=3, max_groups=8 if route_ids else 10)
+    for grp in groups:
+        m = meta(grp["route_id"])
+        walk = transit.walk_minutes(grp["distance"])
+        answer["groups"].append({
+            "route_id": grp["route_id"], "direction_id": grp["direction_id"],
+            "label": arrivals.direction_label(grp, m), "route_name": route_display_name(grp["route_id"], m),
+            "stop_id": grp["stop_id"], "stop_name": grp["stop_name"], "distance_m": grp["distance"], "walk_min": walk,
+            "items": [{
+                "headsign": p["headsign"], "time": p["time"], "event": p["event"], "status": p["status"],
+                "platform_name": p["platform_name"], "route_id": p["route_id"], "direction_id": p["direction_id"],
+                "countdown": arrivals.countdown_text(p, now), "clock": format_time(p["time"]) or "",
+                "catchable": (arrivals.minutes_until(p["time"], now) or 0) >= walk,
+            } for p in grp["items"]],
+        })
+    if answer["groups"]:
+        first = answer["groups"][0]
+        answer["station"] = {"id": first["stop_id"], "name": first["stop_name"]}
+    else:
+        answer["status"] = "none"
+        if filtered is not preds and preds:
+            answer["other_directions"] = [
+                {"label": arrivals.direction_label(x, meta(x["route_id"])), "next": arrivals.countdown_text(x["items"][0], now)}
+                for x in transit.nearest_stop_departures(preds, stops, per_group=1)[:3]]
+
+    try:
+        if route_ids:
+            raw = mbta_request(f"{BASE_URL}/alerts", params={"filter[route]": ",".join(route_ids)}).json().get('data', [])
+            for a in sorted((transit.alert_payload(x, now) for x in raw), key=transit.alert_priority):
+                if a["active_now"] and a["category"] == "service" and a["severity"] >= transit.STATUS_MIN_SEVERITY:
+                    answer["alerts"].append(a["header"])
+    except Exception:
+        pass
+    return answer
+
+
 def remember(user_msg, reply):
     """Add this turn to the user's own history (sent back to their browser only)."""
     if not any(m.get("role") == "user" and m.get("content") == user_msg for m in g.history[-1:]):
@@ -953,16 +1137,26 @@ def arrivals_response(user_msg, parsed):
     result = {"reply": reply, "arrivals": answer}
     # A new context replaces the old one, so a previous trip can't leak into this answer.
     result["context"] = context_stamp({"kind": "arrivals"})
-    if answer.get("station"):
+    if answer.get("kind") == "near":
+        if answer["status"] == "need_location":
+            result["request_location"] = True
+        if answer.get("point"):
+            result["context"].update({k: v for k, v in {"near_point": answer["point"], "near_place": answer.get("place"),
+                                                        "route": answer.get("route")}.items() if v})
+    elif answer.get("station"):
         result["context"].update({"station_name": answer["station"]["name"], "station_id": answer["station"]["id"],
                                   "route": answer.get("route")})
     return result
 
 
 def is_place_phrase(text):
-    """A known station (or a short list of them) or a street address."""
-    return places.looks_like_address(text) or \
+    """A known station (or a short list of them), a landmark or a street address."""
+    return places.looks_like_address(text) or landmark(text) is not None or \
         places.resolve_station(text, STATION_DATA, STATION_ALIASES)["status"] != "unknown"
+
+
+HERE_WORDS = {"here", "my location", "current location", "my current location", "where i am", "me", "my place", "location"}
+THERE_WORDS = {"there", "that station", "that stop"}
 
 
 def _user_location():
@@ -986,10 +1180,10 @@ def _remembered(ep):
     return keep
 
 
-def _plan_endpoints(o, d):
+def _plan_endpoints(o, d, when=None, arrive_by=False):
     hint = lambda ep: f"{ep['lat']},{ep['lon']}" if ep.get("lat") is not None and not ep.get("id") else None
     return plan_journey(o["name"], d["name"], origin_id=o.get("id"), dest_id=d.get("id"),
-                        origin_coords=hint(o), dest_coords=hint(d))
+                        origin_coords=hint(o), dest_coords=hint(d), when=when, arrive_by=arrive_by)
 
 
 def trip_response(user_msg, req, origin=None, destination=None):
@@ -1000,6 +1194,8 @@ def trip_response(user_msg, req, origin=None, destination=None):
     requirements = req.get("requirements") or {}
     if req.get("fill"):   # answering "which station?" keeps what the question asked for
         requirements = assistant.merge_requirements(requirements, pending.get("requirements"))
+    if req.get("followup") and not req.get("fill"):
+        requirements = assistant.merge_requirements(requirements, prev.get("requirements"))
     o, d = origin, destination
     if not (o or d):
         if req.get("refresh"):
@@ -1015,6 +1211,15 @@ def trip_response(user_msg, req, origin=None, destination=None):
                 o, d = (o, other) if fill == "origin" else (other, d)
             elif req.get("followup"):
                 o, d = o or prev.get("origin"), d or prev.get("destination")
+
+    # "from here" is the shared location; "there" is the station or destination just discussed.
+    there = ctx.get("station_name") or (prev.get("destination") or {}).get("name")
+    if o and (o["name"].lower() in HERE_WORDS or arrivals.is_here(o["name"])) and not o.get("id"):
+        o = None
+    elif o and o["name"].lower() in THERE_WORDS and there:
+        o = {"name": there}
+    if d and d["name"].lower() in THERE_WORDS and ctx.get("station_name"):
+        d = {"name": ctx["station_name"]}
 
     location_origin = None
     if not o and d:
@@ -1032,20 +1237,28 @@ def trip_response(user_msg, req, origin=None, destination=None):
                                             "requirements": requirements},
                 "context": context_stamp({**base, "pending": {"field": field, "other": o or d, "requirements": requirements}})}
 
-    result = _plan_endpoints(o, d)
-    sort = requirements.get("sort") or "arrival"
+    when, time_error = None, None
+    if requirements.get("when"):
+        when, time_error = requested_time(requirements["when"]["time"])
+        requirements = {**requirements, "when": when_payload(when, requirements["when"]["arrive_by"]) if when else None}
+    arrive_by = bool(when and requirements["when"]["arrive_by"])
+    result = _plan_endpoints(o, d, when, arrive_by)
+    sort = requirements.get("sort") or ("departure" if arrive_by and not result.get("missed_deadline") else "arrival")
     if result["code"] == "ok":
         result["routes"] = assistant.sort_routes(result["routes"], sort)
     reply = assistant.journey_reply(result, requirements, sort)
+    caveats = assistant.caveats_for(result, requirements, location_origin)
+    if time_error:
+        caveats.insert(0, {"kind": "time", "text": f"{time_error[0].split('.')[0]}, so these trips leave now."})
     remember(user_msg, reply)
     request_eps = {"origin": o, "destination": d}
-    journey_card = {**result, "sort": sort, "request": request_eps, "requirements": requirements,
-                    "caveats": assistant.caveats_for(result, requirements, location_origin)}
+    journey_card = {**result, "sort": sort, "request": request_eps, "requirements": requirements, "caveats": caveats}
 
     code = result["code"]
     if code in ("ok", "no_itineraries", "routing_unavailable"):
         context = {"kind": "trip", "trip": {"origin": _remembered(result["origin"]) or o,
-                                            "destination": _remembered(result["destination"]) or d}}
+                                            "destination": _remembered(result["destination"]) or d,
+                                            "requirements": requirements}}
     else:
         field = (result.get("ambiguous") or result.get("unresolved") or ["destination"])[0]
         other_field = "destination" if field == "origin" else "origin"
@@ -1086,15 +1299,26 @@ def chat_action(action):
         return None
     label = {"refresh": "Refresh this trip", "reverse": "Return trip"}.get(action.get("kind"), f"{o['name']} to {d['name']}")
     requirements = assistant.sanitize_requirements(action.get("requirements"))
-    requirements["sort"] = requirements["sort"] or (action.get("sort") if action.get("sort") in assistant.SORT_CHAINS else None)
+    # "departure" is derived from an arrive-by time (and dropped when the deadline is missed), so it isn't kept.
+    chosen = action.get("sort") if action.get("sort") in assistant.SORT_CHAINS and action.get("sort") != "departure" else None
+    requirements["sort"] = requirements["sort"] or chosen
     return trip_response(label, {"requirements": requirements}, o, d)
+
+
+def chat_requirements(text):
+    """Time, accessibility and sort preferences stated anywhere in a message."""
+    stripped, when = trips.parse_when(text, get_now())
+    req = assistant.extract_requirements(stripped)[1]
+    if when:
+        req.update(when=assistant.when_requirement(when), time=None)
+    return req
 
 
 def process_chat_message(user_msg):
     """Route one chat message: journeys and arrivals are answered from live data with
     deterministic text; the language model only helps understand unusual phrasing."""
     ctx = g.chat_context
-    trip_req = assistant.parse_trip_request(user_msg, ctx, is_place_phrase)
+    trip_req = assistant.parse_trip_request(user_msg, ctx, is_place_phrase, now=get_now())
     parsed = arrivals.parse_arrival_question(user_msg, STATION_DATA, STATION_ALIASES, ctx)
 
     # A short follow-up belongs to whatever the previous answer was about.
@@ -1117,17 +1341,18 @@ def process_chat_message(user_msg):
         origin, dest = intent.get('origin'), intent.get('destination')
         origin = None if origin == "USE_CURRENT_LOCATION" else origin
         return trip_response(user_msg, {"origin": origin, "destination": dest, "followup": True,
-                                        "requirements": assistant.extract_requirements(user_msg)[1]})
+                                        "requirements": chat_requirements(user_msg)})
     if intent_type == 'alerts':
         return alerts_response(user_msg, arrivals.parse_route(intent.get('specific_route') or user_msg))
     if intent_type == 'prediction':
         origin = intent.get('origin')
-        if origin == "USE_CURRENT_LOCATION":
-            origin = g.location.get("station")
-            if not origin:
-                reply = "Which station are you at? Name it, or share your location and ask again."
-                remember(user_msg, reply)
-                return {"reply": reply, "request_location": True}
+        if origin == "USE_CURRENT_LOCATION" or (origin and arrivals.is_here(origin)):
+            # Nearest stops to the rider (asks for their location when it isn't shared).
+            return arrivals_response(user_msg, {
+                "station_query": None, "near_me": True,
+                "route": arrivals.parse_route(intent.get('specific_route') or user_msg) or arrivals.parse_route(user_msg),
+                "toward": intent.get('destination'), "direction": None, "direction_word": None, "followup": False,
+            })
         origin = origin or ctx.get("station_name")
         if origin:
             return arrivals_response(user_msg, {
@@ -1692,7 +1917,11 @@ def station_arrivals(stop_id, now):
     Raises MBTAError when the MBTA can't be reached."""
     pred_response = mbta_request(f"{BASE_URL}/predictions", headers=HEADERS, timeout=15,
         params={"filter[stop]": stop_id, "include": "route,trip,stop", "page[limit]": 60})
-    pred_data = pred_response.json()
+    return prediction_rows(pred_response.json(), now)
+
+
+def prediction_rows(pred_data, now):
+    """Upcoming, time-sorted rows from a /predictions response (route, trip and stop included)."""
     included = {f"{item['type']}_{item['id']}": item for item in pred_data.get('included', [])}
 
     predictions = []
@@ -1715,7 +1944,11 @@ def station_arrivals(stop_id, now):
             continue
         route_attrs = route_info.get('attributes', {})
 
+        stop_rels = included.get(f"stop_{child_stop.get('id', '')}", {}).get('relationships', {})
         predictions.append({
+            "stop_id": child_stop.get('id', ''),
+            "parent_id": ((stop_rels.get('parent_station') or {}).get('data') or {}).get('id', ''),
+            "stop_name": stop_info.get('name') or "",
             "route_id": route_data.get('id', ''),
             "route_name": route_attrs.get('long_name') or route_attrs.get('short_name', ''),
             "route_short_name": route_attrs.get('short_name', ''),
@@ -1860,11 +2093,19 @@ def plan_trip():
     destination = (data.get('destination') or '').strip()
     if not origin or not destination:
         return jsonify({"error": "Origin and destination are required"}), 400
+    # Optional "Depart at" / "Arrive by" time: local Boston time ("2026-11-16T18:10") or ISO with offset.
+    arrive_by = bool(data.get('arrive_by'))
+    when, error = requested_time(data.get('when')) if data.get('when') else (None, None)
+    if error:
+        return jsonify({"error": error[0], "code": error[1]}), 400
 
     result = plan_journey(origin, destination, origin_id=data.get('origin_id'), dest_id=data.get('dest_id'),
-                          origin_coords=data.get('origin_coords'), dest_coords=data.get('dest_coords'))
+                          origin_coords=data.get('origin_coords'), dest_coords=data.get('dest_coords'),
+                          when=when, arrive_by=arrive_by and when is not None)
     body = {**result, "origin": origin, "destination": destination,
             "endpoints": {"origin": result["origin"], "destination": result["destination"]}}
+    if when:
+        body["when"] = when_payload(when, arrive_by)
     if result["code"] == "unresolved":
         body["message"] = "We couldn’t find that place in the Boston area."
     if result["code"] == "routing_unavailable":
@@ -1873,30 +2114,53 @@ def plan_trip():
     return jsonify(body)
 
 
-def journey_providers():
+def requested_time(value):
+    """A requested trip time in Boston, or an error. Returns (datetime|None, (message, code)|None)."""
+    try:
+        when = parser.isoparse(str(value))
+    except (ValueError, TypeError, OverflowError):
+        return None, ("That date or time isn’t valid.", "bad_time")
+    when = BOSTON_TZ.localize(when) if when.tzinfo is None else when.astimezone(BOSTON_TZ)
+    when = when.replace(second=0, microsecond=0)
+    now = get_now()
+    if when < now - timedelta(minutes=2):
+        return None, ("That time has already passed. Pick a time from now on.", "past_time")
+    if when > now + timedelta(days=60):
+        return None, ("Pick a time within the next 60 days.", "bad_time")
+    return when, None
+
+
+def when_payload(when, arrive_by):
+    return {"time": when.isoformat(), "arrive_by": bool(arrive_by), "label": trips.when_label(when, arrive_by, get_now())}
+
+
+def journey_providers(when=None):
     """Routing services in fallback order: Google Directions when a key is configured,
-    then the free Transitous (MOTIS) router. Chat and the planner both use this list."""
+    then the free Transitous (MOTIS) router. Chat and the planner both use this list.
+    Google Directions here only plans "leave now", so a requested time skips it."""
     providers = []
-    if GOOGLE_MAPS_API_KEY:
+    if GOOGLE_MAPS_API_KEY and not when:
         def google(o, d):
             where = lambda ep: f"{ep['lat']},{ep['lon']}" if ep.get('lat') is not None else f"{ep['query']}, Boston, MA"
             return get_google_directions(where(o), where(d), o['name'], d['name'])
         providers.append(("google", google))
 
-    def transitous_provider(o, d):
+    def transitous_provider(o, d, when=None, arrive_by=False):
         missing = [ep for ep in (o, d) if ep.get('lat') is None]
         if missing:
             raise RoutingError("The place lookup service didn’t respond, so this trip can’t be routed right now.")
-        return get_transitous_directions(f"{o['lat']},{o['lon']}", f"{d['lat']},{d['lon']}", d['name'])
+        return get_transitous_directions(f"{o['lat']},{o['lon']}", f"{d['lat']},{d['lon']}", d['name'],
+                                         when=when, arrive_by=arrive_by)
     providers.append(("transitous", transitous_provider))
     return providers
 
 
-def plan_journey(origin, destination, **endpoint_hints):
+def plan_journey(origin, destination, when=None, arrive_by=False, **endpoint_hints):
     """The one journey service: place resolution, provider fallbacks and disruption matching."""
     return journey.plan(origin, destination, stations=STATION_DATA, aliases=STATION_ALIASES,
-                        station_by_id=station_by_id, geocode=_resolve_place, providers=journey_providers(),
-                        annotate=annotate_trip_alerts, now=get_now(), **endpoint_hints)
+                        station_by_id=station_by_id, geocode=_resolve_place, providers=journey_providers(when),
+                        annotate=annotate_trip_alerts, now=get_now(), landmark=landmark,
+                        when=when, arrive_by=arrive_by, **endpoint_hints)
 
 
 def station_by_id(stop_id):
@@ -2253,14 +2517,15 @@ def _epoch(iso_str):
     return int(dt.timestamp()) if dt else None
 
 
-def get_transitous_directions(from_place, to_place, dest_name=None):
+def get_transitous_directions(from_place, to_place, dest_name=None, when=None, arrive_by=False):
     """Itineraries from the free Transitous (MOTIS) API, in the same shape as Google results.
 
     from_place/to_place are 'lat,lon'. Raises RoutingError when the router fails; an
     empty list means it answered but found no itineraries."""
     try:
         resp = requests.get(f"{TRANSITOUS_URL}/v5/plan",
-                            params={"fromPlace": from_place, "toPlace": to_place, "numItineraries": 6},
+                            params={"fromPlace": from_place, "toPlace": to_place, "numItineraries": 6,
+                                    **({"time": when.replace(second=0, microsecond=0).isoformat(), "arriveBy": "true" if arrive_by else "false"} if when else {})},
                             headers=TRANSITOUS_HEADERS, timeout=20)
     except requests.RequestException as e:
         raise RoutingError("The trip planning service didn’t respond. Try again in a moment.") from e
@@ -2393,6 +2658,29 @@ def get_transitous_directions(from_place, to_place, dest_name=None):
         })
 
     return routes[:6]
+
+
+# Places riders name that the geocoder misses or places on a nearby garage/stop.
+LANDMARKS = {
+    "bu": ("Boston University", "42.3505,-71.1054"), "boston university": ("Boston University", "42.3505,-71.1054"),
+    "fenway park": ("Fenway Park", "42.3467,-71.0972"), "faneuil hall": ("Faneuil Hall", "42.3600,-71.0568"),
+    "boston common": ("Boston Common", "42.3550,-71.0656"), "the common": ("Boston Common", "42.3550,-71.0656"),
+    "gillette": ("Gillette Stadium", "42.0909,-71.2643"), "gillette stadium": ("Gillette Stadium", "42.0909,-71.2643"),
+    "mit": ("MIT", "42.3601,-71.0942"), "harvard university": ("Harvard University", "42.3770,-71.1167"),
+    "td garden": ("TD Garden", "42.3662,-71.0621"), "the garden": ("TD Garden", "42.3662,-71.0621"),
+    "mgh": ("Mass General Hospital", "42.3626,-71.0685"), "mass general": ("Mass General Hospital", "42.3626,-71.0685"),
+    "massachusetts general hospital": ("Mass General Hospital", "42.3626,-71.0685"),
+    "bpl": ("Boston Public Library", "42.3493,-71.0782"), "boston public library": ("Boston Public Library", "42.3493,-71.0782"),
+    "logan": ("Logan Airport", "42.3656,-71.0096"), "logan airport": ("Logan Airport", "42.3656,-71.0096"),
+    "the aquarium": ("New England Aquarium", "42.3591,-71.0498"), "new england aquarium": ("New England Aquarium", "42.3591,-71.0498"),
+    "northeastern": ("Northeastern University", "42.3398,-71.0892"), "northeastern university": ("Northeastern University", "42.3398,-71.0892"),
+    "umass boston": ("UMass Boston", "42.3134,-71.0381"), "seaport": ("Seaport", "42.3510,-71.0440"),
+}
+
+
+def landmark(text):
+    hit = LANDMARKS.get(re.sub(r"\s+", " ", str(text or "").lower().strip(" ,.?!")))
+    return {"name": hit[0], "coords": hit[1]} if hit else None
 
 
 def find_station_data(query):

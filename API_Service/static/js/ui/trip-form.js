@@ -12,7 +12,64 @@ import { toast } from './toast.js';
 
 let formId = 0;
 
-export function tripFormHtml({ large = false, submitLabel = 'Plan journey' } = {}) {
+export const WHEN_MODES = [
+  { id: 'now', name: 'Leave now' },
+  { id: 'depart', name: 'Depart at' },
+  { id: 'arrive', name: 'Arrive by' },
+];
+const QUICK_MINUTES = [10, 20, 30, 60];
+const BOSTON_TZ = 'America/New_York';
+
+/** Wall-clock date ('YYYY-MM-DD') and time ('HH:MM') in Boston, `plusMin` minutes from `from`. */
+export function bostonParts(plusMin = 0, from = new Date()) {
+  const d = new Date(from.getTime() + plusMin * 60000);
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: BOSTON_TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(d).map(x => [x.type, x.value]));
+  return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}` };
+}
+
+/** Round a Boston time up to the next 5 minutes, `plusMin` from now. */
+export function suggestedParts(plusMin = 10, from = new Date()) {
+  const ms = from.getTime() + plusMin * 60000;
+  return bostonParts(0, new Date(Math.ceil(ms / 300000) * 300000));
+}
+
+/** "Leaving 6:10 PM" / "Arrive by 9:00 AM tomorrow" from a mode and Boston wall-clock parts. */
+export function whenText(when, from = new Date()) {
+  if (!when || when.mode === 'now') return 'Leaving now';
+  const [date, time] = when.time.split('T');
+  const [h, m] = time.split(':').map(Number);
+  const clock = `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+  const today = bostonParts(0, from).date;
+  const tomorrow = bostonParts(24 * 60, from).date;
+  const day = date === today ? 'today' : date === tomorrow ? 'tomorrow'
+    : new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return when.mode === 'arrive' ? `Arrive by ${clock} ${day}` : `Leave ${day} at ${clock}`;
+}
+
+function whenHtml(id) {
+  return `<fieldset class="trip-when" data-when>
+      <legend class="sr-only">When are you travelling?</legend>
+      <div class="segmented trip-when__modes" role="group" aria-label="When">
+        ${WHEN_MODES.map(m => `<button type="button" class="segmented__btn" data-when-mode="${m.id}" aria-pressed="${m.id === 'now'}">${e(m.name)}</button>`).join('')}
+      </div>
+      <div class="trip-when__pick" data-when-pick hidden>
+        <div class="trip-when__inputs">
+          <label class="sr-only" for="${id}-date">Date</label>
+          <input id="${id}-date" class="input input--sm" type="date" name="when_date" />
+          <label class="sr-only" for="${id}-time">Time</label>
+          <input id="${id}-time" class="input input--sm" type="time" name="when_time" step="60" />
+        </div>
+        <div class="chips trip-when__quick" role="group" aria-label="Quick departure times">
+          ${QUICK_MINUTES.map(n => `<button type="button" class="chip chip--btn" data-when-plus="${n}">${n < 60 ? `In ${n} min` : 'In 1 hr'}</button>`).join('')}
+        </div>
+        <p class="field-error field-error--inline" id="${id}-when-err" data-error-for="when" role="alert" hidden></p>
+      </div>
+    </fieldset>`;
+}
+
+export function tripFormHtml({ large = false, submitLabel = 'Plan journey', timeOptions = false } = {}) {
   const id = `tf${++formId}`;
   return `<form class="trip-form${large ? ' trip-form--lg' : ''}" data-trip-form novalidate>
     <div class="trip-form__fields">
@@ -32,6 +89,7 @@ export function tripFormHtml({ large = false, submitLabel = 'Plan journey' } = {
       </div>
       <button type="button" class="icon-btn trip-form__swap" data-swap aria-label="Swap starting point and destination" title="Swap">${icon('swap', { size: 18 })}</button>
     </div>
+    ${timeOptions ? whenHtml(id) : ''}
     <p class="field-error" data-error role="alert" hidden></p>
     <button class="btn btn--primary btn--block" type="submit">${icon('route', { size: 18 })}${e(submitLabel)}</button>
   </form>`;
@@ -135,22 +193,71 @@ export function bindTripForm(form, { onSubmit, onChange = () => {}, initial = {}
     }
   });
 
+  // "Leave now" / "Depart at" / "Arrive by", with a Boston date and time.
+  const whenBox = form.querySelector('[data-when]');
+  let whenMode = 'now';
+  const whenDate = form.querySelector('[name="when_date"]');
+  const whenTime = form.querySelector('[name="when_time"]');
+  const whenError = form.querySelector('[data-error-for="when"]');
+  const showWhenError = message => {
+    if (!whenError) return;
+    whenError.textContent = message; whenError.hidden = !message;
+    for (const i of [whenDate, whenTime]) i.setAttribute('aria-invalid', message ? 'true' : 'false');
+  };
+  const setWhen = (mode, parts) => {
+    if (!whenBox) return;
+    whenMode = mode;
+    whenBox.querySelectorAll('[data-when-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.whenMode === mode)));
+    whenBox.querySelector('[data-when-pick]').hidden = mode === 'now';
+    if (mode !== 'now') {
+      const p = parts || (whenDate.value && whenTime.value ? null : suggestedParts(10));
+      if (p) { whenDate.value = p.date; whenTime.value = p.time; }
+      whenDate.min = bostonParts().date;
+    }
+    showWhenError('');
+  };
+  const readWhen = () => (!whenBox || whenMode === 'now' ? null : { mode: whenMode, time: `${whenDate.value}T${whenTime.value}` });
+  if (whenBox) {
+    whenBox.querySelectorAll('[data-when-mode]').forEach(b => b.addEventListener('click', () => { setWhen(b.dataset.whenMode); onChange(); }));
+    whenBox.querySelectorAll('[data-when-plus]').forEach(b => b.addEventListener('click', () => {
+      // "In 10 min" etc. always means leaving then.
+      setWhen('depart', bostonParts(Number(b.dataset.whenPlus)));
+      onChange();
+    }));
+    for (const i of [whenDate, whenTime]) i.addEventListener('change', () => { showWhenError(''); onChange(); });
+    if (initial.when && initial.when.mode !== 'now' && initial.when.time) {
+      const [date, time] = initial.when.time.split('T');
+      setWhen(initial.when.mode, { date, time: time.slice(0, 5) });
+    }
+  }
+
   form.addEventListener('submit', ev => {
     ev.preventDefault();
     const o = readPlace(origin), d = readPlace(dest);
     clearErrors();
+    showWhenError('');
     if (!o || !d) {
       if (!o) fieldError('origin', 'Enter a starting point.');
       if (!d) fieldError('destination', 'Enter a destination.');
       (!o ? origin : dest).focus();
       return;
     }
-    onSubmit({ origin: o, destination: d });
+    const when = readWhen();
+    if (when) {
+      if (!whenDate.value || !whenTime.value) { showWhenError('Pick a date and time.'); (whenDate.value ? whenTime : whenDate).focus(); return; }
+      const now = bostonParts();
+      if (`${whenDate.value}T${whenTime.value}` < `${now.date}T${now.time}`) {
+        showWhenError('That time has already passed. Pick a later time, or choose Leave now.');
+        whenTime.focus();
+        return;
+      }
+    }
+    onSubmit({ origin: o, destination: d, when });
   });
 
   return {
     setOrigin: p => setValue(origin, p), setDestination: p => setValue(dest, p),
-    fieldError, clearErrors,
+    fieldError, clearErrors, setWhen, readWhen, whenError: showWhenError,
     focusField: name => {
       const input = fieldOf(name);
       if (!input) return;

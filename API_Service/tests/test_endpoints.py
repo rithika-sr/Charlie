@@ -162,10 +162,10 @@ def test_chat_keeps_per_user_history_contract(client, monkeypatch):
 
 def test_trip_planner_falls_back_to_transitous(client, monkeypatch):
     monkeypatch.setattr(charlie, "GOOGLE_MAPS_API_KEY", None)
-    itinerary = {"itineraries": [{"duration": 900, "startTime": "2026-11-16T13:00:00Z", "endTime": "2026-11-16T13:15:00Z", "transfers": 0,
+    itinerary = {"itineraries": [{"duration": 900, "startTime": iso(1), "endTime": iso(16), "transfers": 0,
                                   "legs": [{"mode": "SUBWAY", "routeLongName": "Red Line", "routeColor": "DA291C", "headsign": "Alewife",
                                             "from": {"name": "Park Street"}, "to": {"name": "Harvard"}, "duration": 600,
-                                            "startTime": "2026-11-16T13:02:00Z", "endTime": "2026-11-16T13:12:00Z", "intermediateStops": [{}, {}]}]}]}
+                                            "startTime": iso(3), "endTime": iso(13), "intermediateStops": [{}, {}]}]}]}
     monkeypatch.setattr(charlie.requests, "get", lambda url, **kw: FakeResponse(itinerary))
     data = client.post("/api/trip-planner", json={"origin": "Park Street", "destination": "Harvard"}).get_json()
     assert len(data["routes"]) == 1

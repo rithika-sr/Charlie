@@ -4,12 +4,18 @@ Charlie AI trip requests: understand "chiswick rd to harvard", "what about Hynes
 
 Pure functions (no Flask, no network). Every journey fact in a reply (times, lines,
 transfers, alerts) is read from the structured result; nothing is generated.
+Requested departure/arrival times are read with trips.parse_when and sent to the planner.
 """
 
 import re
 import time
+from datetime import datetime
 
-# ---------------------------------------------------------------- requirements we can't honor
+import trips
+
+# ---------------------------------------------------------------- requirements and preferences
+# A time trips.parse_when can read is applied; any other time phrase ("next Monday") and
+# accessibility needs are stated as not applied.
 
 TIME_REQUEST = re.compile(
     r"\b(?:(?:arriv\w*|get there|be there|leav\w*|depart\w*|go)\s+(?:by|at|before|after|around)"
@@ -84,7 +90,7 @@ def _clean(text):
 def _place(text):
     t = re.sub(r"^(?:the|a|instead)\s+", "", str(text or "").strip(" ,.?!"), flags=re.I)
     # Words that qualify the request, not the place: "Copley instead", "Kenmore then".
-    t = re.sub(r"(?:\s+(?:please|now|right now|asap|today|instead|then|too|as well))+$", "", t, flags=re.I)
+    t = re.sub(r"(?:\s+(?:please|now|right now|asap|today|instead|then|too|as well|leaving|departing|arriving|starting))+$", "", t, flags=re.I)
     return t.strip(" ,") or None
 
 
@@ -113,17 +119,27 @@ def extract_requirements(text):
     return t.strip(" ,"), found
 
 
-def parse_trip_request(text, context=None, is_place=lambda s: False):
+def when_requirement(when):
+    """trips.parse_when() result -> the JSON-safe form kept in requirements."""
+    return {"time": when["time"].isoformat(), "arrive_by": bool(when["arrive_by"]), "label": when["label"]}
+
+
+def parse_trip_request(text, context=None, is_place=lambda s: False, now=None):
     """Decide whether `text` asks for a journey. Returns None, or
     {"origin", "destination", "followup", "reverse", "refresh", "requirements"}.
 
     `context` is the sanitized chat context (see sanitize_context); `is_place(text)` says
-    whether a phrase is a known station or an address, used for the bare "X to Y" form."""
+    whether a phrase is a known station or an address, used for the bare "X to Y" form.
+    `now` (Boston time) turns "by 6 pm" or "tomorrow at 9am" into requirements["when"]."""
     context = context or {}
     trip = context.get("trip") or {}
     pending = context.get("pending") or {}
     raw = _clean(text)
-    t, req = extract_requirements(raw)
+    stripped, when = trips.parse_when(raw, now) if now is not None else (raw, None)
+    t, req = extract_requirements(stripped)
+    req["when"] = when_requirement(when) if when else None
+    if when:
+        req["time"] = None
     out = lambda o=None, d=None, **kw: {"origin": _place(o), "destination": _place(d), "followup": False,
                                        "reverse": False, "refresh": False, "requirements": req, **kw}
 
@@ -135,7 +151,7 @@ def parse_trip_request(text, context=None, is_place=lambda s: False):
                        followup=True, fill=field)
 
     if trip.get("origin") and trip.get("destination"):
-        only_requirements = (req["time"] or req["accessibility"] or req["sort"]) and not _FOLLOW_WORDS.sub("", t).strip(" ,")
+        only_requirements = (req["time"] or req["when"] or req["accessibility"] or req["sort"]) and not _FOLLOW_WORDS.sub("", t).strip(" ,")
         if FOLLOW_REFRESH.match(t) or only_requirements:
             return out(None, None, followup=True, refresh=True)
         if FOLLOW_REVERSE.search(t) and not re.search(r"\bto\s+\w", re.sub(FOLLOW_REVERSE, "", t)):
@@ -157,6 +173,12 @@ def parse_trip_request(text, context=None, is_place=lambda s: False):
             if d and re.match(r"^(?:there|home|work)$", d.strip(), re.I) and not trip:
                 return out(o, d)
             return out(o, d)
+
+    # Broader phrasing ("what's the best way to get to MIT from Back Bay?", "between X and Y",
+    # "I'm in Cambridge near Central and need to be at Fenway Park").
+    found = trips.parse_trip_question(t, is_place=is_place, now=now)
+    if found:
+        return out(found["origin"], found["destination"])
 
     m = BARE.match(t)
     if m and len(m.group("o").split()) <= 6 and len(m.group("d").split()) <= 6 \
@@ -183,19 +205,34 @@ def _endpoint(value):
 def sanitize_requirements(raw):
     """Requirements carried by a card action or a pending question: short phrases only."""
     raw = raw if isinstance(raw, dict) else {}
-    out = {"time": None, "accessibility": None, "sort": None}
+    out = {"time": None, "accessibility": None, "sort": None, "when": None}
     for k in ("time", "accessibility"):
         if isinstance(raw.get(k), str) and raw[k].strip():
             out[k] = raw[k].strip()[:60]
-    if raw.get("sort") in ("arrival", "duration", "transfers", "walking"):
+    if raw.get("sort") in SORT_CHAINS:
         out["sort"] = raw["sort"]
+    when = raw.get("when")
+    if isinstance(when, dict) and isinstance(when.get("time"), str):
+        try:
+            datetime.fromisoformat(when["time"][:40])
+            out["when"] = {"time": when["time"][:40], "arrive_by": when.get("arrive_by") is True,
+                           "label": str(when.get("label") or "")[:60]}
+        except ValueError:
+            pass
     return out
 
 
+REQUIREMENT_KEYS = ("time", "accessibility", "sort", "when")
+
+
 def merge_requirements(new, old):
-    """A follow-up keeps earlier requirements unless it states its own."""
-    old = old or {}
-    return {k: (new or {}).get(k) or old.get(k) for k in ("time", "accessibility", "sort")}
+    """A follow-up keeps earlier requirements unless it states its own. A new time of
+    either kind (readable or not) replaces the old one."""
+    old, new = old or {}, new or {}
+    merged = {k: new.get(k) or old.get(k) for k in REQUIREMENT_KEYS}
+    if new.get("when") or new.get("time"):
+        merged["when"], merged["time"] = new.get("when"), new.get("time")
+    return merged
 
 
 def sanitize_context(raw, now=None):
@@ -208,7 +245,9 @@ def sanitize_context(raw, now=None):
     if isinstance(at, (int, float)) and not isinstance(at, bool):
         if now - at > CONTEXT_TTL_SECONDS or at - now > 300:
             return {}
-    ctx = {k: str(raw[k])[:80] for k in ("station_name", "station_id", "route") if raw.get(k)}
+    ctx = {k: str(raw[k])[:80] for k in ("station_name", "station_id", "route", "near_place") if raw.get(k)}
+    if isinstance(raw.get("near_point"), str) and re.fullmatch(r"-?\d{1,3}\.\d+,-?\d{1,3}\.\d+", raw["near_point"][:40]):
+        ctx["near_point"] = raw["near_point"]
     if raw.get("kind") in ("arrivals", "trip"):
         ctx["kind"] = raw["kind"]
     trip = raw.get("trip")
@@ -216,6 +255,8 @@ def sanitize_context(raw, now=None):
         o, d = _endpoint(trip.get("origin")), _endpoint(trip.get("destination"))
         if o or d:
             ctx["trip"] = {"origin": o, "destination": d}
+            if isinstance(trip.get("requirements"), dict):
+                ctx["trip"]["requirements"] = sanitize_requirements(trip["requirements"])
     pending = raw.get("pending")
     if isinstance(pending, dict) and pending.get("field") in ("origin", "destination"):
         ctx["pending"] = {"field": pending["field"], "other": _endpoint(pending.get("other")),
@@ -245,6 +286,10 @@ SORT_CHAINS = {
 }
 
 
+SORT_CHAINS["departure"] = lambda r: (-_num(r.get("depart_ts"), -INF), _num(r.get("transfers"), INF),
+                                      _num(r.get("walk_time"), 0))     # "arrive by": leave as late as possible
+
+
 def sort_routes(routes, by="arrival"):
     """Same order as the Trip Planner's sortTrips (stable, so the router's order breaks ties)."""
     return sorted(routes, key=SORT_CHAINS.get(by) or SORT_CHAINS["arrival"])
@@ -253,7 +298,7 @@ def sort_routes(routes, by="arrival"):
 # ---------------------------------------------------------------- replies
 
 SORT_LABEL = {"arrival": "earliest arrival", "duration": "shortest trip", "transfers": "fewest transfers",
-              "walking": "least walking"}
+              "walking": "least walking", "departure": "latest departure"}
 
 
 def place_label(ep):
@@ -263,8 +308,14 @@ def place_label(ep):
 def caveats_for(result, requirements, location_origin=None):
     """Short notes about what the answer does and doesn't cover, from the request and result."""
     notes = []
-    if requirements.get("time"):
-        notes.append({"kind": "time", "text": f"I can only plan trips leaving now, so these don’t account for “{requirements['time']}”."})
+    when = requirements.get("when")
+    if result.get("missed_deadline") and when:
+        notes.append({"kind": "time", "text": f"No trip gets you there {when['label'].replace('arriving ', '')}. "
+                                              "These are the soonest arrivals if you leave now."})
+    elif when:
+        notes.append({"kind": "when", "text": when["label"][:1].upper() + when["label"][1:] + "."})
+    elif requirements.get("time"):
+        notes.append({"kind": "time", "text": f"I couldn’t read “{requirements['time']}” as a time, so these trips leave now."})
     if requirements.get("accessibility"):
         notes.append({"kind": "accessibility",
                       "text": "I can’t filter for step-free routes yet. Check elevator and escalator status in Alerts before you go."})
@@ -285,6 +336,11 @@ def journey_reply(result, requirements=None, sort="arrival"):
     code = result.get("code")
     o, d = place_label(result.get("origin")), place_label(result.get("destination"))
     trip = f"**{o}** → **{d}**"
+    asked = requirements.get("when")
+    if code == "ok" and result.get("missed_deadline") and asked:
+        best = result["routes"][0]
+        soonest = f" The soonest arrival is **{best['arrive_time']}**." if best.get("arrive_time") else ""
+        return f"⏰ No trip leaving now gets you from **{o}** to **{d}** {asked['label'].replace('arriving ', '')}.{soonest}"
     if code == "ok":
         best = result["routes"][0]
         when = []
@@ -298,6 +354,8 @@ def journey_reply(result, requirements=None, sort="arrival"):
             facts.append("no transfers" if transfers == 0 else f"{transfers} transfer{'s' if transfers > 1 else ''}")
         lines = " → ".join(s.get("name", "") for s in best.get("steps", []) if s.get("name"))
         label = SORT_LABEL.get(sort, SORT_LABEL["arrival"])
+        if asked:
+            trip += f" ({asked['label']})"
         msg = f"{trip}: {', '.join(when) or 'best option'} ({', '.join(facts)})" + (f" on {lines}" if lines else "") + "."
         others = len(result["routes"]) - 1
         if sort != "arrival":
@@ -320,7 +378,8 @@ def journey_reply(result, requirements=None, sort="arrival"):
     if code == "same_place":
         return f"**{o}** is both the start and the destination. Where are you heading?"
     if code == "no_itineraries":
-        return (f"Both places were found, but the routing service returned no trips leaving now for {trip}. "
+        return (f"Both places were found, but the routing service returned no trips "
+                f"{asked['label'] if asked else 'leaving now'} for {trip}. "
                 "Try a nearby station, or check alerts for closures.")
     if code == "routing_unavailable":
         return (f"The trip-planning service isn’t responding right now, so I can’t show routes for {trip}. "

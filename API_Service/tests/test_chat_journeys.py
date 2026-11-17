@@ -2,6 +2,7 @@
 agreement with the Trip Planner. Transitous, Google, the MBTA and OpenAI are mocked."""
 
 import time
+from datetime import datetime
 
 import pytest
 
@@ -13,6 +14,7 @@ from tests.test_journey import b_line_plan
 CHISWICK = charlie.STATION_DATA["Chiswick Road"]
 HYNES = charlie.STATION_DATA["Hynes Convention Center"]
 HARVARD = charlie.STATION_DATA["Harvard"]
+NOW = charlie.BOSTON_TZ.localize(datetime(2026, 11, 16, 12, 0))      # Mon noon in Boston
 
 
 @pytest.fixture
@@ -40,6 +42,7 @@ def services(monkeypatch):
     monkeypatch.setattr(charlie.requests, "get", fake_get)
     monkeypatch.setattr(charlie, "GOOGLE_MAPS_API_KEY", None)
     monkeypatch.setattr(charlie, "client", None)            # no OpenAI key: deterministic paths only
+    monkeypatch.setattr(charlie, "get_now", lambda: NOW)    # times like "by 5pm" don't depend on the clock
 
     class S:
         pass
@@ -118,6 +121,19 @@ def test_chat_and_planner_return_the_same_journey(client, services, origin, dest
     assert chat["routes"] == assistant.sort_routes(planner["routes"])     # same itineraries, same ranking
     assert chat["provider"] == planner["provider"] and chat["notices"] == planner["notices"]
     assert services.plans[0] == services.plans[1]                          # identical router request
+
+
+@pytest.mark.parametrize("phrase, when, arrive_by, sort", [
+    ("by 5pm", "2026-11-16T17:00", True, "departure"),
+    ("tomorrow at 9am", "2026-11-17T09:00", False, "arrival"),
+])
+def test_chat_and_planner_agree_for_a_requested_time(client, services, phrase, when, arrive_by, sort):
+    planner = client.post("/api/trip-planner", json={"origin": "Chiswick Road", "destination": "Harvard",
+                                                     "when": when, "arrive_by": arrive_by}).get_json()
+    chat = ask(client, f"chiswick rd to harvard {phrase}")["journey"]
+    assert services.plans[0] == services.plans[1]                          # same time and arriveBy sent
+    assert chat["routes"] == assistant.sort_routes(planner["routes"], sort)
+    assert chat["requirements"]["when"]["label"] == planner["when"]["label"]
 
 
 # ---------- follow-ups and per-user context ----------
@@ -228,23 +244,36 @@ def test_shared_location_is_used_as_the_origin(client, services):
     assert any(c["kind"] == "location" for c in j["caveats"])
 
 
-# ---------- requirements the planner can't honor ----------
+# ---------- times, and requirements the planner can't honor ----------
 
-@pytest.mark.parametrize("message, kind", [
-    ("chiswick rd to hynes by 5pm", "time"),
-    ("chiswick rd to hynes tomorrow morning", "time"),
-    ("wheelchair accessible route from chiswick rd to hynes", "accessibility"),
+@pytest.mark.parametrize("message, kind, arrive_by", [
+    ("chiswick rd to hynes by 5pm", "when", "true"),
+    ("chiswick rd to hynes tomorrow morning", "when", "false"),
+    ("chiswick rd to hynes next monday", "time", None),            # not a time we can read: stated, leaves now
+    ("wheelchair accessible route from chiswick rd to hynes", "accessibility", None),
 ])
-def test_unsupported_requirements_are_stated_not_ignored(client, services, message, kind):
+def test_times_are_applied_and_other_requirements_stated(client, services, message, kind, arrive_by):
     j = ask(client, message)["journey"]
     assert j["code"] == "ok" and j["destination"]["name"] == "Hynes Convention Center"
     assert [c["kind"] for c in j["caveats"]] == [kind]
+    sent = services.plans[-1]
+    assert sent.get("arriveBy") == arrive_by and ("time" in sent) == (arrive_by is not None)
 
 
-def test_time_follow_up_replans_with_a_caveat(client, services):
+def test_time_follow_up_replans_for_that_time(client, services):
     ctx = ask(client, "chiswick rd to harvard")["context"]
+    assert "time" not in services.plans[-1]
     j = ask(client, "what about leaving at 6pm?", ctx)["journey"]
-    assert j["code"] == "ok" and j["caveats"][0]["kind"] == "time" and "leaving at 6pm" in j["caveats"][0]["text"]
+    assert j["code"] == "ok" and j["requirements"]["when"]["label"].endswith("at 6:00 PM")
+    assert services.plans[-1]["time"][11:16] == "18:00" and services.plans[-1]["arriveBy"] == "false"
+    assert j["caveats"][0]["kind"] == "when"
+
+
+def test_followups_keep_the_requested_time(client, services):
+    ctx = ask(client, "chiswick rd to harvard by 11:59 pm")["context"]
+    j = ask(client, "what about Hynes?", ctx)["journey"]
+    assert j["destination"]["name"] == "Hynes Convention Center"
+    assert services.plans[-1]["time"][11:16] == "23:59" and services.plans[-1]["arriveBy"] == "true"
 
 
 def test_preference_sorts_like_the_planner(client, services):
@@ -290,15 +319,20 @@ def test_greeting_without_llm_is_short_help(client, services):
 
 def test_requirements_survive_a_clarification(client, services):
     first = ask(client, "park to hynes by 5pm")
-    assert first["journey"]["code"] == "ambiguous" and first["journey"]["requirements"]["time"] == "by 5pm"
+    assert first["journey"]["code"] == "ambiguous" and first["journey"]["requirements"]["when"]["arrive_by"] is True
     typed = ask(client, "Park Street", first["context"])["journey"]
-    assert typed["code"] == "ok" and [c["kind"] for c in typed["caveats"]] == ["time"]
+    assert typed["code"] == "ok" and [c["kind"] for c in typed["caveats"]] == ["when"]
+    assert services.plans[-1]["arriveBy"] == "true" and services.plans[-1]["time"][11:16] == "17:00"
     picked = client.post("/api/chat", json={"action": {"type": "trip", "kind": "pick", "origin": {"name": "Park Street"},
                                                        "destination": first["journey"]["request"]["destination"],
                                                        "requirements": first["journey"]["requirements"]}}).get_json()
-    assert [c["kind"] for c in picked["journey"]["caveats"]] == ["time"]
+    assert [c["kind"] for c in picked["journey"]["caveats"]] == ["when"]
+    assert services.plans[-1]["arriveBy"] == "true"
 
 
 def test_action_requirements_are_sanitized():
     r = assistant.sanitize_requirements({"time": "x" * 500, "accessibility": 5, "sort": "drop table"})
     assert len(r["time"]) == 60 and r["accessibility"] is None and r["sort"] is None
+    assert assistant.sanitize_requirements({"when": {"time": "not a time"}})["when"] is None
+    ok = assistant.sanitize_requirements({"when": {"time": "2026-11-16T18:00:00-05:00", "arrive_by": "yes", "label": "x"}})
+    assert ok["when"] == {"time": "2026-11-16T18:00:00-05:00", "arrive_by": False, "label": "x"}
