@@ -1,10 +1,11 @@
 """
-Charlie AI trip answers: pull origin and destination out of a question and phrase a
-reply from the itineraries the Trip Planner returned. Pure functions (no Flask, no
-network). Every time, line and step in a reply comes from the routing data.
+Trip phrasing and departure/arrival times for Charlie AI: pull origin, destination
+and a requested time out of free text. Pure functions (no Flask, no network).
+
+assistant.parse_trip_request uses this as its broad phrasing fallback and for times;
+journeys themselves come from journey.plan(), shared with the Trip Planner.
 """
 
-import math
 import re
 
 from datetime import datetime, timedelta
@@ -205,85 +206,3 @@ def parse_trip_followup(text, context, is_place=None):
     if not origin and (is_place is None or is_place(_strip(t))):
         return {"origin": _strip(t), "destination": dest, "when": None}   # answer to "Where are you starting from?"
     return None
-
-
-def _num(v, missing=math.inf):
-    return v if isinstance(v, (int, float)) and math.isfinite(v) else missing
-
-
-def sort_routes(routes, arrive_by=False):
-    """Earliest arrival by displayed minute, then fewer transfers, less walking, exact
-    time, duration and the router's order — the Trip Planner's default sort.
-    For "arrive by" questions, the latest departure that still makes it comes first."""
-    if arrive_by:
-        return [r for _, r in sorted(enumerate(routes), key=lambda item: (
-            -_num(item[1].get("depart_ts"), -math.inf), _num(item[1].get("transfers")), _num(item[1].get("walk_time"), 0), item[0]))]
-
-    def key(item):
-        i, r = item
-        ts = _num(r.get("arrive_ts"))
-        return (ts // 60 if math.isfinite(ts) else math.inf, _num(r.get("transfers")), _num(r.get("walk_time"), 0),
-                ts, _num(r.get("duration")), i)
-    return [r for _, r in sorted(enumerate(routes), key=key)]
-
-
-def _transfers(n):
-    return "no transfers" if not n else f"{n} transfer{'s' if n > 1 else ''}"
-
-
-def build_trip_reply(result, planned_at=""):
-    """Markdown reply for a plan_trip_core() result."""
-    code = result.get("code")
-    o = result.get("origin_name") or result.get("origin") or "your starting point"
-    d = result.get("destination_name") or result.get("destination") or "your destination"
-
-    if code == "need_origin":
-        return (f"Where are you starting from? Tell me a station or address (for example "
-                f"“from **Park Street** to **{d}**”), or share your location with the 📍 button.")
-    if code == "unresolved":
-        bad = result.get("unresolved") or []
-        names = [f"“{result.get('origin')}”" if f == "origin" else f"“{result.get('destination')}”" for f in bad]
-        which = " or ".join(names)
-        return (f"I couldn’t find {which} in the Boston area. Check the spelling, use a station name "
-                f"(like **Hynes Convention Center**) or a full street address with the town.")
-    if code == "routing_unavailable":
-        return (f"The trip planning service didn’t respond, so I can’t plan **{o} → {d}** right now. "
-                "Try again in a moment, or open the Trip Planner.")
-    if code == "no_itineraries" or not result.get("routes"):
-        return (f"I found both **{o}** and **{d}**, but the routing service has no transit itineraries "
-                "for this trip right now. Service may have ended for the night — try a nearby station or "
-                "open the Trip Planner.")
-
-    routes = result["routes"]
-    when = result.get("when_label")
-    order = "latest departure first" if result.get("arrive_by") else "earliest arrival first"
-    count = f"{len(routes)} option{'s' if len(routes) != 1 else ''}"
-    if result.get("missed_deadline"):
-        lines = [f"⏰ No trip leaving now gets you from **{o}** to **{d}** {(when or '').replace('arriving ', '')}. "
-                 f"Here are the soonest arrivals instead ({count}, earliest arrival first):"]
-    else:
-        lines = [f"🗺️ **{o} → {d}** — {count}"
-                 + (f" · **{when}**" if when else (f", planned at **{planned_at}**" if planned_at else "")) + f", {order}:"]
-    for n in result.get("notices") or []:
-        lines.append("")
-        lines.append(f"⚠️ **{n['station']} ({'your destination' if n['role'] == 'destination' else 'your starting point'}):** "
-                     f"{n.get('header', '')}" + (f" {n['explanation']}" if n.get("explanation") else ""))
-    for i, r in enumerate(routes, 1):
-        lines.append("")
-        facts = [f"**{r.get('duration_text') or str(r.get('duration')) + ' min'}**"]
-        if r.get("depart_time") and r.get("arrive_time"):
-            facts.append(f"leave **{r['depart_time']}** → arrive **{r['arrive_time']}**")
-        facts.append(_transfers(r.get("transfers")))
-        if r.get("walk_time"):
-            facts.append(f"{r['walk_time']} min walk")
-        if r.get("fare"):
-            facts.append(f"{r['fare']} est.")
-        lines.append(f"**{i}. {r.get('summary') or 'Transit'}** · " + " · ".join(facts))
-        if i == 1:
-            for s in r.get("detailed_steps") or []:
-                when = " · ".join(x for x in (s.get("time"), s.get("duration")) if x)
-                lines.append(f"   • {s.get('instruction', '')}" + (f" — {s['details']}" if s.get("details") else "")
-                             + (f" ({when})" if when else ""))
-        for a in (r.get("alerts") or [])[:2]:
-            lines.append(f"   ⚠️ {a.get('step')}: {a.get('service_effect') or a.get('header')}")
-    return "\n".join(lines)

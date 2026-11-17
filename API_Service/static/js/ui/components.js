@@ -144,7 +144,7 @@ export function tripClock(ts, fallback = '', now = new Date()) {
 const STEP_MODE = { subway: 'subway', tram: 'subway', 'silver-line': 'bus', bus: 'bus', 'commuter-rail': 'commuter_rail', ferry: 'ferry', transit: 'subway' };
 
 /** Trip option card. `badges` holds transparent labels such as "Shortest trip". */
-export function tripOptionCard(route, index, { badges = [], alerts = [], note = '' } = {}) {
+export function tripOptionCard(route, index, { badges = [], alerts = [], note = '', open = index === 0 } = {}) {
   const segments = route.steps.map((s, i) => {
     const color = s.color || '#64748B';
     return `${i ? `<span class="seg-sep" aria-hidden="true">${icon('chevronRight', { size: 14 })}</span>` : ''}<span class="seg" style="--seg:${e(color)};--seg-ink:${inkFor(color)}">${modeIcon(STEP_MODE[s.type] || 'subway', { size: 14 })}${e(s.short_name || s.name)}</span>`;
@@ -157,7 +157,7 @@ export function tripOptionCard(route, index, { badges = [], alerts = [], note = 
       ${st.details ? `<div class="tstep__sub">${e(st.details)}</div>` : ''}
       ${st.time || st.duration ? `<div class="tstep__time">${e([st.time, st.duration].filter(Boolean).join(' · '))}</div>` : ''}</div>
     </li>`).join('');
-  return `<details class="trip-card" ${index === 0 ? 'open' : ''}>
+  return `<details class="trip-card" ${open ? 'open' : ''}>
     <summary class="trip-card__summary">
       <div class="trip-card__time">
         <span class="trip-card__duration">${e(route.duration_text || `${route.duration} min`)}</span>

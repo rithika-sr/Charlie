@@ -129,8 +129,8 @@ def chat(client, message, **extra):
 def test_departed_options_are_never_shown(client, monkeypatch):
     mock_router(monkeypatch, [{"itineraries": [itin(-20, -5), itin(-3, 15), itin(4, 20)]}])
     data = chat(client, "from Park Street to Harvard")
-    assert len(data["trip"]["routes"]) == 1                       # only the one leaving in 4 min
-    assert "2 options" not in data["reply"] and "1 option" in data["reply"]
+    assert len(data["journey"]["routes"]) == 1                    # only the one leaving in 4 min
+    assert "more option" not in data["reply"]
 
 
 def test_requested_time_is_sent_to_the_router(client, monkeypatch):
@@ -144,37 +144,40 @@ def test_requested_time_is_sent_to_the_router(client, monkeypatch):
 def test_arrive_by_lists_latest_departure_first(client, monkeypatch):
     mock_router(monkeypatch, [{"itineraries": [itin(5, 40), itin(15, 50), itin(10, 45)]}])
     data = chat(client, "how do I get from Forest Hills to Oak Grove by 11:59 pm")
-    departs = [r["depart_ts"] for r in data["trip"]["routes"]]
-    assert departs == sorted(departs, reverse=True)
-    assert "latest departure first" in data["reply"]
+    departs = [r["depart_ts"] for r in data["journey"]["routes"]]
+    assert departs == sorted(departs, reverse=True) and data["journey"]["sort"] == "departure"
+    assert "latest departure" in data["reply"] and "arriving by 11:59 PM" in data["reply"]
 
 
 def test_missed_deadline_says_so_and_shows_soonest_arrivals(client, monkeypatch):
     mock_router(monkeypatch, [{"itineraries": [itin(-30, -2)]}, {"itineraries": [itin(2, 30), itin(6, 34)]}])
     data = chat(client, "how do I get from Forest Hills to Oak Grove by 11:59 pm")
-    assert data["trip"]["missed_deadline"] is True and len(data["trip"]["routes"]) == 2
+    assert data["journey"]["missed_deadline"] is True and len(data["journey"]["routes"]) == 2
     assert data["reply"].startswith("⏰ No trip leaving now gets you from **Forest Hills** to **Oak Grove**")
+    assert data["journey"]["sort"] == "arrival"                    # soonest arrivals, not latest departure
 
 
 def test_conversation_followups_and_pronouns(client, monkeypatch):
     mock_router(monkeypatch, [{"itineraries": [itin(3, 20)]}] * 4)
     first = chat(client, "Take me to Fenway")
-    assert first["trip"]["code"] == "need_origin" and first["context"] == {"trip_destination": "Fenway"}
+    assert first["journey"]["code"] == "needs_origin" and first["context"]["pending"]["field"] == "origin"
     second = chat(client, "Park Street", history=first["history"], context=first["context"])
-    assert second["trip"]["code"] == "ok"
-    assert (second["trip"]["origin_name"], second["trip"]["destination_name"]) == ("Park Street", "Fenway")
+    assert second["journey"]["code"] == "ok"
+    assert (second["journey"]["origin"]["name"], second["journey"]["destination"]["name"]) == ("Park Street", "Fenway")
     third = chat(client, "what about to Copley?", history=second["history"], context=second["context"])
-    assert (third["trip"]["origin_name"], third["trip"]["destination_name"]) == ("Park Street", "Copley")
-    here = chat(client, "from here to Kendall", location={"station": "Harvard", "lat": 42.37, "lon": -71.12})
-    assert here["trip"]["origin_name"] == "Harvard"
+    assert (third["journey"]["origin"]["name"], third["journey"]["destination"]["name"]) == ("Park Street", "Copley")
+    # "here" is the shared location itself (not the nearest station), stated in a caveat.
+    here = chat(client, "from here to Kendall", location={"station": "Harvard", "lat": 42.37, "lon": -71.12})["journey"]
+    assert (here["origin"]["lat"], here["origin"]["lon"]) == (42.37, -71.12)
+    assert any(c["kind"] == "location" and "Harvard" in c["text"] for c in here["caveats"])
     there = chat(client, "how do I get from there to Fenway", context={"station_name": "Ruggles"})
-    assert there["trip"]["origin_name"] == "Ruggles"
+    assert there["journey"]["origin"]["name"] == "Ruggles"
 
 
-def test_every_option_is_listed_with_times_and_first_option_steps(client, monkeypatch):
+def test_every_option_is_in_the_card_and_the_reply_names_the_best(client, monkeypatch):
     mock_router(monkeypatch, [{"itineraries": [itin(2, 30), itin(5, 25, "Red"), itin(9, 40), itin(12, 33, "Blue")]}])
-    reply = chat(client, "How do I get from Chiswick Rd to Hynes Convention Center?")["reply"]
-    for n in range(1, 5):
-        assert f"**{n}. " in reply
-    assert reply.count("leave **") == 4 and reply.count("arrive **") == 4
-    assert "• Take Red Line" in reply                             # earliest arrival (Red, +25) shows its steps
+    data = chat(client, "How do I get from Chiswick Rd to Hynes Convention Center?")
+    routes = data["journey"]["routes"]
+    assert len(routes) == 4 and all(r["depart_time"] and r["arrive_time"] and r["detailed_steps"] for r in routes)
+    assert "Red" in routes[0]["summary"]                           # earliest arrival (Red, +25) first
+    assert f"arrive **{routes[0]['arrive_time']}**" in data["reply"] and "3 more options below" in data["reply"]

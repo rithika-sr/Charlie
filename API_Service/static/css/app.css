@@ -586,7 +586,9 @@ body.panel-open .map-tool--label { width: 44px; padding: 0; }
    ========================================================================== */
 body[data-route="ai"] .view { padding: 0; max-width: none; }
 .chat { display: flex; flex-direction: column; height: calc(100dvh - var(--command-h)); }
-.chat__scroll { flex: 1; overflow-y: auto; }
+/* position: relative keeps absolutely positioned descendants (e.g. .sr-only labels in line
+   badges) inside this scroller; otherwise they stretch the page and the composer drifts on phones. */
+.chat__scroll { position: relative; flex: 1; overflow-y: auto; }
 .chat__inner { max-width: 760px; margin: 0 auto; padding: var(--s8) var(--s6) var(--s4); }
 .chat__intro { text-align: center; padding: var(--s8) 0 var(--s6); }
 .chat__mark { width: 52px; height: 52px; border-radius: 16px; margin: 0 auto var(--s4); display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #312E81, #1E3A8A); color: #DDD6FE; }
@@ -757,6 +759,20 @@ body[data-route="ai"] .view { padding: 0; max-width: none; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
 
+/* Charlie AI journey cards */
+.chat__toolbar { display: flex; justify-content: flex-end; min-height: 0; }
+.chat__toolbar [hidden] { display: none; }
+.journey .trip-card { background: var(--surface-2, var(--surface)); }
+.journey__ends { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-weight: 600; color: var(--text); }
+.journey__caveats { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-sm); color: var(--text-2); }
+.journey__caveats li { display: flex; gap: 6px; align-items: flex-start; }
+.journey__caveats .icon { flex: none; margin-top: 2px; }
+.journey__more > summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; padding: 6px 0; font-size: var(--fs-sm); color: var(--accent, var(--text-2)); }
+.journey__more > summary::-webkit-details-marker { display: none; }
+.journey__more[open] > summary .icon { transform: rotate(180deg); }
+.journey__more .stack { margin-top: var(--s2); }
+.journey .trip-notice { margin-bottom: 0; }
+.composer [type="submit"]:disabled { opacity: 0.55; cursor: progress; }
 /* Trip Planner: Leave now / Depart at / Arrive by */
 .trip-when { border: 0; padding: 0; margin: var(--s3) 0 0; min-width: 0; display: flex; flex-direction: column; gap: var(--s2); }
 .trip-when__modes { display: flex; width: 100%; }

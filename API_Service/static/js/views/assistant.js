@@ -6,22 +6,25 @@ import { store } from '../core/store.js';
 import { LINES } from '../core/constants.js';
 import { escapeHtml as e, renderRichText, formatClockSeconds } from '../core/format.js';
 import { icon } from '../ui/icons.js';
-import { lineBadge, arrivalRow, tripOptionCard } from '../ui/components.js';
-import { sortTrips, tripBadges, arrivalNote, tripAlertText, noticeHtml } from './trip.js';
-import { navigate } from '../core/router.js';
+import { lineBadge, arrivalRow } from '../ui/components.js';
 import { openStation } from '../ui/station-panel.js';
 import { requestLocation } from '../ui/location.js';
+import { journeyCardHtml, journeyAction, actionLabel } from '../ui/journey-card.js';
+import { navigate } from '../core/router.js';
 
 const SUGGESTIONS = [
   'When is the next Red Line train at Harvard?',
   'Are there delays on the Orange Line?',
+  'Chiswick Rd to Hynes',
   'How do I get from Fenway to Park Street?',
-  'Show me service alerts',
 ];
 
 let recognition = null;
 let listening = false;
 let sending = false;
+// main.js reuses one container for every view, so listeners on it must be removed on
+// leave; otherwise each visit adds another and buttons fire once per visit.
+let listeners = null;
 
 /** Stations and subway lines mentioned in a reply, for quick-action chips. */
 export function mentions(text, stations) {
@@ -90,34 +93,18 @@ export function nearCardHtml(a, i) {
   </div>`;
 }
 
-/** Itinerary cards under a trip reply: the Trip Planner's own cards, plus a shortcut to it. */
-export function tripCardsHtml(t, i) {
-  if (!t) return '';
-  const open = t.code !== 'need_origin' && t.origin
-    ? `<button class="btn btn--secondary btn--sm" data-plan-trip="${i}">${icon('route', { size: 14 })}Open in Trip Planner</button>` : '';
-  if (t.code !== 'ok' || !(t.routes || []).length) return open ? `<div class="msg-card"><div class="btn-row">${open}</div></div>` : '';
-  // "Arrive by" answers come latest-departure-first from the server; otherwise earliest arrival.
-  const routes = t.arrive_by ? t.routes : sortTrips(t.routes);
-  const badges = tripBadges(routes);
-  return `<div class="msg-card msg-card--trips" aria-label="Trip options">
-    ${(t.notices || []).map(noticeHtml).join('')}
-    <div class="stack-sm">${routes.map((r, k) => tripOptionCard(r, k, {
-      badges: badges[k], note: arrivalNote(r, routes), alerts: (r.alerts || []).map(tripAlertText) })).join('')}</div>
-    <div class="msg-card__foot"><span class="muted small">From the Trip Planner’s live routing · ${t.arrive_by ? 'latest departure first' : 'earliest arrival first'}</span>${open}</div>
-  </div>`;
-}
-
 function messageHtml(msg, i) {
   if (msg.role === 'user') return `<li class="msg msg--user"><div class="msg__bubble">${e(msg.text)}</div></li>`;
   if (msg.role === 'error') return `<li class="msg msg--bot msg--error"><div class="msg__avatar" aria-hidden="true">${icon('alert', { size: 16 })}</div><div class="msg__bubble">${e(msg.text)} <button class="link" data-retry="${i}">Try again</button></div></li>`;
-  const chips = mentions(msg.text, store.get('stations'));
+  const chips = msg.journey ? [] : mentions(msg.text, store.get('stations'));
   return `<li class="msg msg--bot">
     <div class="msg__avatar" aria-hidden="true">${icon('sparkle', { size: 16 })}</div>
     <div class="msg__content">
-      <div class="msg__bubble"><p>${renderRichText(msg.arrivals?.status === 'ok' || msg.trip?.code === 'ok' ? String(msg.text).split('\n')[0] : msg.text)}</p></div>
-      ${arrivalsCardHtml(msg.arrivals, i)}${tripCardsHtml(msg.trip, i)}
+      <div class="msg__bubble"><p>${renderRichText(msg.arrivals?.status === 'ok' ? String(msg.text).split('\n')[0] : msg.text)}</p></div>
+      ${arrivalsCardHtml(msg.arrivals, i)}
+      ${journeyCardHtml(msg.journey, i, { stations: store.get('stations') })}
       <div class="msg__actions">
-        ${(msg.arrivals || msg.trip ? chips.filter(c => c.type !== 'station') : chips).map(c => c.type === 'station'
+        ${(msg.arrivals ? chips.filter(c => c.type !== 'station') : chips).map(c => c.type === 'station'
           ? `<button class="chip chip--btn" data-open-station="${e(c.id)}">${icon('pin', { size: 14 })}${e(c.name)}</button>`
           : `<a class="chip chip--btn" href="#/lines/${encodeURIComponent(c.id)}">${lineBadge(c.id, { size: 'sm', label: false })}${e(c.name)}</a>`).join('')}
         ${'speechSynthesis' in window ? `<button class="icon-btn icon-btn--sm" data-speak="${i}" aria-label="Read this reply aloud" title="Read aloud">${icon('speaker', { size: 16 })}</button>` : ''}
@@ -132,32 +119,75 @@ function render(el) {
   const intro = el.querySelector('[data-intro]');
   intro.hidden = chat.messages.length > 0;
   list.innerHTML = chat.messages.map(messageHtml).join('') +
-    (sending ? `<li class="msg msg--bot"><div class="msg__avatar" aria-hidden="true">${icon('sparkle', { size: 16 })}</div><div class="msg__bubble msg__typing" aria-label="Charlie is typing"><span></span><span></span><span></span></div></li>` : '');
+    (sending ? `<li class="msg msg--bot"><div class="msg__avatar" aria-hidden="true">${icon('sparkle', { size: 16 })}</div><div class="msg__bubble msg__typing" role="status" aria-label="Charlie is looking that up"><span></span><span></span><span></span></div></li>` : '');
+  el.querySelector('[data-reset]').hidden = chat.messages.length === 0;
+  const submit = el.querySelector('[data-composer] [type="submit"]');
+  submit.disabled = sending;
+  list.setAttribute('aria-busy', String(sending));
+  // Show a new reply from its first line (a journey card can be taller than the screen).
   const scroller = el.querySelector('[data-scroll]');
-  scroller.scrollTop = scroller.scrollHeight;
+  const last = list.lastElementChild;
+  if (last && !sending && last.classList.contains('msg--bot') && last.offsetHeight > scroller.clientHeight * 0.6) {
+    scroller.scrollTop = Math.max(0, last.offsetTop - 12);
+  } else {
+    scroller.scrollTop = scroller.scrollHeight;
+  }
 }
 
-async function send(el, text) {
-  const message = text.trim();
-  if (!message || sending) return;
+/** Send a typed message, or a structured `action` from a journey card button. */
+async function send(el, text, { action = null } = {}) {
+  const message = String(text || '').trim();
+  if ((!message && !action) || sending) return;
   const chat = store.get('chat');
-  chat.messages.push({ role: 'user', text: message });
+  chat.messages.push({ role: 'user', text: message || actionLabel(action) });
   sending = true;
   render(el);
   const loc = store.get('location');
-  const { data, error } = await api.chat({ message, history: chat.history, location: loc || null, context: chat.context || null });
+  const body = { message, history: chat.history, location: loc || null, context: chat.context || null };
+  if (action) body.action = action;
+  const { data, error } = await api.chat(body);
   sending = false;
   if (error || !data) {
-    chat.messages.push({ role: 'error', text: 'Charlie couldn’t reach the transit service just now.', retry: message });
+    chat.messages.push({ role: 'error', text: 'Charlie couldn’t reach the server just now.', retry: message, retryAction: action });
   } else {
     if (Array.isArray(data.history)) chat.history = data.history;
-    if (data.context) chat.context = data.context;
-    chat.messages.push({ role: 'bot', text: data.reply || 'No reply.', arrivals: data.arrivals || null, trip: data.trip || null, ask: message });
-    // Charlie needs to know where you are: ask the browser, then answer the same question.
+    // Each answer replaces the context, so an old trip or station never leaks into a new question.
+    chat.context = data.context || null;
+    chat.messages.push({ role: 'bot', text: data.reply || 'No reply.', arrivals: data.arrivals || null, journey: data.journey || null, ask: message });
+    // Nearby departures need to know where you are: ask the browser, then answer the same question.
     if (data.request_location) setTimeout(() => shareLocationAndAsk(el, message), 600);
   }
   render(el);
+  el.querySelector('#chat-input')?.focus({ preventScroll: true });
+}
+
+function resetConversation(el) {
+  store.set('chat', { messages: [], history: [], context: null });
+  render(el);
   el.querySelector('#chat-input')?.focus();
+}
+
+async function journeyButton(el, btn) {
+  const chat = store.get('chat');
+  const j = chat.messages[Number(btn.dataset.journey)]?.journey;
+  if (!j) return;
+  const kind = btn.dataset.journeyAction;
+  if (kind === 'planner') {
+    const req = journeyAction(j, 'refresh');
+    // Keep a time asked for in chat ("…by 6 pm", "in 10 minutes") unless it was missed.
+    const w = j.requirements?.when;
+    const when = w && !j.missed_deadline ? { mode: w.arrive_by ? 'arrive' : 'depart', time: w.time } : null;
+    store.set('pendingTrip', req ? { origin: req.origin, destination: req.destination, when } : { origin: j.request?.origin, destination: j.request?.destination, when });
+    navigate('trip');
+    return;
+  }
+  let location = null;
+  if (kind === 'locate') {
+    location = await requestLocation({ quiet: true });
+    if (!location) return;
+  }
+  const action = journeyAction(j, kind, { field: btn.dataset.field, name: btn.dataset.name, location });
+  if (action) send(el, '', { action });
 }
 
 async function shareLocationAndAsk(el, message) {
@@ -209,6 +239,7 @@ export const assistantView = {
               <p class="muted">Live arrivals, delays and directions in plain English. Charlie uses real-time MBTA data${store.get('location')?.station ? ` and knows you’re near <strong>${e(store.get('location').station)}</strong>` : ''}.</p>
               <div class="suggestions">${SUGGESTIONS.map(s => `<button class="suggestion" data-suggest="${e(s)}">${e(s)}</button>`).join('')}</div>
             </header>
+            <div class="chat__toolbar"><button type="button" class="btn btn--ghost btn--sm" data-reset hidden>${icon('plus', { size: 14 })}New conversation</button></div>
             <ol class="messages" data-messages aria-live="polite" aria-label="Conversation"></ol>
           </div>
         </div>
@@ -228,38 +259,35 @@ export const assistantView = {
       input.value = '';
       send(el, text);
     });
+    listeners?.abort();
+    listeners = new AbortController();
     el.addEventListener('click', ev => {
-      const t = ev.target.closest('[data-suggest],[data-open-station],[data-speak],[data-retry],[data-plan-trip],[data-share-loc]');
+      const t = ev.target.closest('[data-suggest],[data-open-station],[data-speak],[data-retry],[data-journey-action],[data-reset],[data-share-loc]');
       if (!t) return;
+      if (t.dataset.journeyAction) { journeyButton(el, t); return; }
+      if (t.hasAttribute('data-reset')) { resetConversation(el); return; }
       if (t.dataset.shareLoc) {
         const ask = store.get('chat').messages[Number(t.dataset.shareLoc)]?.ask;
         if (ask) shareLocationAndAsk(el, ask);
+        return;
       }
       if (t.dataset.suggest) send(el, t.dataset.suggest);
-      if (t.dataset.planTrip) {
-        const trip = store.get('chat').messages[Number(t.dataset.planTrip)]?.trip;
-        if (trip) {
-          // Keep a time asked for in chat ("…by 6 pm", "in 10 minutes") unless it was missed.
-          const when = trip.when_time && !trip.missed_deadline ? { mode: trip.arrive_by ? 'arrive' : 'depart', time: trip.when_time } : null;
-          store.set('pendingTrip', { origin: { name: trip.origin_name || trip.origin }, destination: { name: trip.destination_name || trip.destination }, when });
-          navigate('trip');
-        }
-      }
       if (t.dataset.openStation) openStation(t.dataset.openStation);
       if (t.dataset.speak) speak(store.get('chat').messages[Number(t.dataset.speak)].text);
       if (t.dataset.retry) {
         const chat = store.get('chat');
         const msg = chat.messages[Number(t.dataset.retry)];
+        if (!msg || sending) return;
         chat.messages.splice(Number(t.dataset.retry), 1);
         const lastUser = chat.messages.length - 1;
         if (chat.messages[lastUser]?.role === 'user') chat.messages.splice(lastUser, 1);
-        send(el, msg.retry);
+        send(el, msg.retry, { action: msg.retryAction || null });
       }
-    });
+    }, { signal: listeners.signal });
     el.querySelector('[data-loc]').addEventListener('click', () => requestLocation());
     setupVoice(el);
     render(el);
     input.focus({ preventScroll: true });
   },
-  leave() { recognition?.stop(); window.speechSynthesis?.cancel(); },
+  leave() { listeners?.abort(); listeners = null; recognition?.stop(); window.speechSynthesis?.cancel(); },
 };
