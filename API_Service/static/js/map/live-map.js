@@ -8,6 +8,7 @@ import { decodePolyline } from '../core/polyline.js';
 import { escapeHtml as e, formatClockSeconds, vehicleStatusText } from '../core/format.js';
 import { alertsForRoutes } from '../core/alerts.js';
 import { clusterPoints } from '../core/cluster.js';
+import { vehicleIconHtml, updateVehicleIcon, MarkerMotion, KIND_NAMES, vehicleKind } from './vehicle-icons.js';
 
 const LEAFLET_VERSION = '1.9.4';
 const REFRESH_MS = 10000;
@@ -44,7 +45,11 @@ export const CLUSTER_MAX_ZOOM = 12;
 const CLUSTER_RADIUS = 26;
 const GROUP_NAMES = { Red: 'Red Line', Orange: 'Orange Line', Blue: 'Blue Line', Green: 'Green Line', Mattapan: 'Mattapan Trolley', CR: 'Commuter Rail' };
 
-const VEHICLE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 19.5 20 12 16.2 4.5 20z"/></svg>';
+// Each update glides a vehicle to its new live position over one refresh interval, so it
+// is always moving bit by bit instead of jumping every 10 seconds.
+const GLIDE_MS = REFRESH_MS * 1.05;
+const VEHICLE_ICON = { iconSize: [32, 32], iconAnchor: [16, 16] };
+const routeCode = (routeId, short) => (LINES[routeId] ? LINES[routeId].code : String(routeId || '').startsWith('CR-') ? 'CR' : short || routeId);
 
 export class LiveMap {
   constructor(el, { onVehicleSelect, onStationSelect, onStatus } = {}) {
@@ -53,6 +58,7 @@ export class LiveMap {
     this.onStationSelect = onStationSelect || (() => {});
     this.onStatus = onStatus || (() => {});
     this.vehicles = new Map();      // id -> { marker, data }
+    this.motion = new MarkerMotion();
     this.stationMarkers = new Map();
     this.shapeLayers = new Map();   // routeId -> [polylines]
     this.groups = new Set([...LINE_GROUPS.map(g => g.id), 'CR', 'Bus']);
@@ -101,6 +107,7 @@ export class LiveMap {
     map.getPane('tooltipPane').style.zIndex = 700;   // keep hover cards above vehicle markers
     this.shapeGroup = L.layerGroup().addTo(map);
     this.stationGroup = L.layerGroup().addTo(map);
+    this.motion.map = map;
     this.vehicleGroup = L.layerGroup().addTo(map);
     this.clusterGroup = L.layerGroup().addTo(map);
     this.clustered = new Set();
@@ -264,14 +271,14 @@ export class LiveMap {
       seen.add(v.id);
       const existing = this.busVehicles.get(v.id);
       if (existing) {
-        existing.setLatLng([v.latitude, v.longitude]);
-        existing.getElement()?.querySelector('.veh')?.style.setProperty('--rot', `${Number(v.bearing) || 0}deg`);
+        this.motion.move(existing, [v.latitude, v.longitude], GLIDE_MS);
+        updateVehicleIcon(existing.getElement(), { bearing: v.bearing });
         continue;
       }
       const label = `Route ${this.busMeta.get(routeId)?.short_name || routeId} bus ${v.label || v.id}${v.headsign ? ` to ${v.headsign}` : ''}${v.current_status ? ` · ${vehicleStatusText(v.current_status, v.stop_name)}` : ''}`;
       const marker = this.L.marker([v.latitude, v.longitude], {
         pane: 'vehicles', keyboard: true, title: label,
-        icon: this.L.divIcon({ className: 'veh-icon veh-icon--bus', html: `<span class="veh" style="--c:${color};--rot:${Number(v.bearing) || 0}deg">${VEHICLE_SVG}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] }),
+        icon: this.L.divIcon({ className: 'veh-icon veh-icon--bus', html: vehicleIconHtml({ color, routeId, bearing: v.bearing, code: this.busMeta.get(routeId)?.short_name || routeId }), ...VEHICLE_ICON }),
       });
       marker.on('click', ev => { this.L.DomEvent.stopPropagation(ev); this.onVehicleSelect(v); });
       marker.on('mouseover', () => clearTimeout(this.busLeaveTimer));
@@ -280,11 +287,12 @@ export class LiveMap {
       this.busVehicles.set(v.id, marker);
     }
     for (const [id, marker] of this.busVehicles) {
-      if (!seen.has(id)) { this.busVehicleGroup.removeLayer(marker); this.busVehicles.delete(id); }
+      if (!seen.has(id)) { this.motion.cancel(marker); this.busVehicleGroup.removeLayer(marker); this.busVehicles.delete(id); }
     }
   }
 
   clearBusVehicles() {
+    for (const marker of this.busVehicles.values()) this.motion.cancel(marker);
     this.busVehicleGroup.clearLayers();
     this.busVehicles.clear();
   }
@@ -393,7 +401,7 @@ export class LiveMap {
 
   vehicleLabel(v) {
     const name = routeIdentity(v.route?.id, { name: v.route?.name }).name;
-    return `${name} vehicle ${v.label || v.id}${v.headsign ? ` to ${v.headsign}` : ''}`;
+    return `${name} ${KIND_NAMES[vehicleKind(v.route?.id)].toLowerCase()} ${v.label || v.id}${v.headsign ? ` to ${v.headsign}` : ''}`;
   }
 
   renderVehicles(list) {
@@ -406,16 +414,16 @@ export class LiveMap {
       const existing = this.vehicles.get(v.id);
       if (existing) {
         existing.data = v;
-        existing.marker.setLatLng([v.latitude, v.longitude]);
+        this.motion.move(existing.marker, [v.latitude, v.longitude], GLIDE_MS);
         const el = existing.marker.getElement();
         if (el) {
-          el.querySelector('.veh')?.style.setProperty('--rot', `${Number(v.bearing) || 0}deg`);
+          updateVehicleIcon(el, { bearing: v.bearing });
           el.setAttribute('aria-label', this.vehicleLabel(v));
         }
       } else {
         const marker = L.marker([v.latitude, v.longitude], {
           pane: 'vehicles', keyboard: true, title: this.vehicleLabel(v),
-          icon: L.divIcon({ className: 'veh-icon', html: `<span class="veh" style="--c:${e(color)};--rot:${Number(v.bearing) || 0}deg">${VEHICLE_SVG}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] }),
+          icon: L.divIcon({ className: 'veh-icon', html: vehicleIconHtml({ color: e(color), routeId: v.route?.id, bearing: v.bearing, code: routeCode(v.route?.id) }), ...VEHICLE_ICON }),
         });
         marker.on('click', () => this.selectVehicle(v.id));
         marker.on('add', () => {
@@ -429,7 +437,7 @@ export class LiveMap {
       }
     }
     for (const [id, entry] of this.vehicles) {
-      if (!seen.has(id)) { this.vehicleGroup.removeLayer(entry.marker); this.vehicles.delete(id); }
+      if (!seen.has(id)) { this.motion.cancel(entry.marker); this.vehicleGroup.removeLayer(entry.marker); this.vehicles.delete(id); }
     }
     this.refreshVehicles();
   }
@@ -547,6 +555,7 @@ export class LiveMap {
   }
 
   stop() {
+    this.motion.clear();
     clearInterval(this.timer);
     this.timer = null;
     this.controller?.abort();
@@ -570,6 +579,7 @@ export class LiveMap {
     this.focusRoute = routeId || null;
     // Vehicles for a different route set: clear and refetch.
     for (const { marker } of this.vehicles.values()) this.vehicleGroup.removeLayer(marker);
+    this.motion.clear();
     this.clusterGroup.clearLayers();
     this.clustered.clear();
     this.vehicles.clear();

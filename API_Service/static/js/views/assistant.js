@@ -46,8 +46,9 @@ export function mentions(text, stations) {
 }
 
 /** Structured arrivals under a reply: the same predictions, with a station-board shortcut. */
-export function arrivalsCardHtml(a) {
+export function arrivalsCardHtml(a, i) {
   if (!a) return '';
+  if (a.kind === 'near') return nearCardHtml(a, i);
   const station = a.station;
   const open = station ? `<button class="btn btn--secondary btn--sm" data-open-station="${e(station.id)}">${icon('pin', { size: 14 })}Open ${e(station.name)} station board</button>` : '';
   if (a.status === 'ambiguous') {
@@ -67,19 +68,42 @@ export function arrivalsCardHtml(a) {
   </div>`;
 }
 
+const distanceText = m => (m == null ? '' : m < 1000 ? `${m} m` : `${(m / 1609).toFixed(1)} mi`);
+
+/** Nearest-stop departures ("next 39 toward Back Bay near me", "what's leaving near me?"). */
+export function nearCardHtml(a, i) {
+  if (a.status === 'need_location') {
+    return `<div class="msg-card"><div class="btn-row"><button class="btn btn--primary btn--sm" data-share-loc="${i}">${icon('locate', { size: 14 })}Share my location</button>
+      <a class="btn btn--ghost btn--sm" href="#/stations">${icon('search', { size: 14 })}Browse stations</a></div></div>`;
+  }
+  if (a.status === 'unavailable') return `<div class="msg-card msg-card--warn"><p class="small">Live predictions are unavailable right now, so no times are shown.</p></div>`;
+  if (a.status !== 'ok') return `<div class="msg-card"><div class="btn-row"><a class="btn btn--secondary btn--sm" href="#/trip">${icon('route', { size: 14 })}Open Trip Planner</a><a class="btn btn--ghost btn--sm" href="#/alerts">${icon('alert', { size: 14 })}Service alerts</a></div></div>`;
+  return `<div class="msg-card" aria-label="Departures from the nearest stops">
+    ${(a.groups || []).map(g => `<section class="board board--compact">
+      <header class="board__head">${lineBadge(g.route_id, { size: 'sm', route: { short_name: String(g.route_name || '').replace(/^Route /, ''), name: g.route_name } })}
+        <span class="board__dir">${e(g.route_name ? `${g.route_name} · ` : '')}To ${e(g.label)}</span></header>
+      <p class="board__stop small muted"><button class="link" data-open-station="${e(g.stop_id)}">${e(g.stop_name)}</button> · ${e(distanceText(g.distance_m))}${g.walk_min ? ` · ~${g.walk_min} min walk` : ''}</p>
+      <ul class="arrivals">${g.items.map(p => arrivalRow(p, { stationName: g.stop_name })
+        .replace('<span class="arrival__meta">', p.catchable === false ? '<span class="arrival__meta"><span class="arrival__warn">Too soon to walk there</span> · ' : '<span class="arrival__meta">')).join('')}</ul>
+    </section>`).join('')}
+    <div class="msg-card__foot"><span class="muted small">MBTA predictions · nearest stops · checked ${e(formatClockSeconds(a.updated_at))}</span></div>
+  </div>`;
+}
+
 /** Itinerary cards under a trip reply: the Trip Planner's own cards, plus a shortcut to it. */
 export function tripCardsHtml(t, i) {
   if (!t) return '';
   const open = t.code !== 'need_origin' && t.origin
     ? `<button class="btn btn--secondary btn--sm" data-plan-trip="${i}">${icon('route', { size: 14 })}Open in Trip Planner</button>` : '';
   if (t.code !== 'ok' || !(t.routes || []).length) return open ? `<div class="msg-card"><div class="btn-row">${open}</div></div>` : '';
-  const routes = sortTrips(t.routes);
+  // "Arrive by" answers come latest-departure-first from the server; otherwise earliest arrival.
+  const routes = t.arrive_by ? t.routes : sortTrips(t.routes);
   const badges = tripBadges(routes);
   return `<div class="msg-card msg-card--trips" aria-label="Trip options">
     ${(t.notices || []).map(noticeHtml).join('')}
     <div class="stack-sm">${routes.map((r, k) => tripOptionCard(r, k, {
       badges: badges[k], note: arrivalNote(r, routes), alerts: (r.alerts || []).map(tripAlertText) })).join('')}</div>
-    <div class="msg-card__foot"><span class="muted small">From the Trip Planner’s live routing · earliest arrival first</span>${open}</div>
+    <div class="msg-card__foot"><span class="muted small">From the Trip Planner’s live routing · ${t.arrive_by ? 'latest departure first' : 'earliest arrival first'}</span>${open}</div>
   </div>`;
 }
 
@@ -91,7 +115,7 @@ function messageHtml(msg, i) {
     <div class="msg__avatar" aria-hidden="true">${icon('sparkle', { size: 16 })}</div>
     <div class="msg__content">
       <div class="msg__bubble"><p>${renderRichText(msg.arrivals?.status === 'ok' || msg.trip?.code === 'ok' ? String(msg.text).split('\n')[0] : msg.text)}</p></div>
-      ${arrivalsCardHtml(msg.arrivals)}${tripCardsHtml(msg.trip, i)}
+      ${arrivalsCardHtml(msg.arrivals, i)}${tripCardsHtml(msg.trip, i)}
       <div class="msg__actions">
         ${(msg.arrivals || msg.trip ? chips.filter(c => c.type !== 'station') : chips).map(c => c.type === 'station'
           ? `<button class="chip chip--btn" data-open-station="${e(c.id)}">${icon('pin', { size: 14 })}${e(c.name)}</button>`
@@ -128,11 +152,17 @@ async function send(el, text) {
   } else {
     if (Array.isArray(data.history)) chat.history = data.history;
     if (data.context) chat.context = data.context;
-    chat.messages.push({ role: 'bot', text: data.reply || 'No reply.', arrivals: data.arrivals || null, trip: data.trip || null });
-    if (data.request_location) setTimeout(() => requestLocation(), 600);
+    chat.messages.push({ role: 'bot', text: data.reply || 'No reply.', arrivals: data.arrivals || null, trip: data.trip || null, ask: message });
+    // Charlie needs to know where you are: ask the browser, then answer the same question.
+    if (data.request_location) setTimeout(() => shareLocationAndAsk(el, message), 600);
   }
   render(el);
   el.querySelector('#chat-input')?.focus();
+}
+
+async function shareLocationAndAsk(el, message) {
+  const loc = await requestLocation({ quiet: true });
+  if (loc && loc.lat != null && !sending) send(el, message);
 }
 
 function speak(text) {
@@ -199,13 +229,19 @@ export const assistantView = {
       send(el, text);
     });
     el.addEventListener('click', ev => {
-      const t = ev.target.closest('[data-suggest],[data-open-station],[data-speak],[data-retry],[data-plan-trip]');
+      const t = ev.target.closest('[data-suggest],[data-open-station],[data-speak],[data-retry],[data-plan-trip],[data-share-loc]');
       if (!t) return;
+      if (t.dataset.shareLoc) {
+        const ask = store.get('chat').messages[Number(t.dataset.shareLoc)]?.ask;
+        if (ask) shareLocationAndAsk(el, ask);
+      }
       if (t.dataset.suggest) send(el, t.dataset.suggest);
       if (t.dataset.planTrip) {
         const trip = store.get('chat').messages[Number(t.dataset.planTrip)]?.trip;
         if (trip) {
-          store.set('pendingTrip', { origin: { name: trip.origin_name || trip.origin }, destination: { name: trip.destination_name || trip.destination } });
+          // Keep a time asked for in chat ("…by 6 pm", "in 10 minutes") unless it was missed.
+          const when = trip.when_time && !trip.missed_deadline ? { mode: trip.arrive_by ? 'arrive' : 'depart', time: trip.when_time } : null;
+          store.set('pendingTrip', { origin: { name: trip.origin_name || trip.origin }, destination: { name: trip.destination_name || trip.destination }, when });
           navigate('trip');
         }
       }

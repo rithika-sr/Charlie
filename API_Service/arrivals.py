@@ -21,7 +21,10 @@ ROUTE_WORDS = [
     (r"\bmattapan\b", "Mattapan"),
     (r"\bred\b", "Red"), (r"\borange\b", "Orange"), (r"\bblue\b", "Blue"), (r"\bgreen\b", "Green"),
     (r"\bcommuter rail\b|\bcr\b", "CR"),
-    (r"\b(?:bus|route|rt)\s*#?\s*(\w+)\b", "BUS"),
+    (r"\b(\d{1,3}[a-z]?|sl[1-5w]|ct[1-3])\s+(?:bus|route)\b", "BUS"),
+    (r"\b(?:next|the)\s+(\d{1,3}[a-z]?|sl[1-5w]|ct[1-3])(?=\s+(?:at|from|toward|towards|to|near|in|inbound|outbound|"
+     r"leaving|arriving|going|heading|here|stop)\b|\s*[?.!]*$)", "BUS"),
+    (r"\b(?:bus|route|rt)\s*(?:number|num|no\.?)?\s*#?\s*(\w+)\b", "BUS"),
     (r"\bsilver line\b|\bsl([1-5w])\b", "SILVER"),
 ]
 
@@ -32,6 +35,27 @@ DIRECTION_WORDS = {
 }
 
 STOP_TAIL = r"(?:\s+(?:station|stop|sta))?"
+
+# Silver Line and crosstown names riders use -> MBTA route ids.
+NAMED_BUS_ROUTES = {"SL1": "741", "SL2": "742", "SL3": "743", "SL4": "751", "SL5": "749", "SLW": "746",
+                    "CT2": "747", "CT3": "708"}
+
+# "my current location", "near me", "here": the rider's own position, not a station name.
+HERE_RE = re.compile(
+    r"\b(?:(?:my|our) (?:current |present |exact )?(?:location|position|spot|place)|current location|where i am|"
+    r"where we are|(?:near|around|close to|closest to|nearest to|by) (?:me|us|here)|nearby|nearest|closest|"
+    r"from here|right here|here)\b", re.I)
+# Words that make a "near me" message a transit question ("what's leaving near me?").
+NEARBY_ASK = re.compile(
+    r"\b(trains?|bus(?:es)?|trolleys?|subway|the t|transit|transport\w*|departures?|leaving|options?|available|"
+    r"ride|catch|take|get on|board|stops?|stations?|services?|mbta|commuter rail|ferry)\b|\bwhat(?:'?s| is) (?:near|around|close)", re.I)
+
+
+def is_here(phrase):
+    """True when the phrase names the rider's own location rather than a place."""
+    p = _clean(phrase)
+    return bool(p) and bool(HERE_RE.fullmatch(p) or re.fullmatch(r"(?:me|us|my place)", p) or HERE_RE.search(p) and
+                            len(HERE_RE.sub("", p).strip()) == 0)
 
 
 def _clean(text):
@@ -50,8 +74,8 @@ def parse_route(text):
             continue
         if route == "BUS":
             value = m.group(1)
-            if value and re.fullmatch(r"\d{1,3}[a-z]?|sl\d|ct\d", value):
-                return value.upper() if not value.isdigit() else value
+            if value and re.fullmatch(r"\d{1,3}[a-z]?|sl[1-5w]|ct[1-3]", value):
+                return NAMED_BUS_ROUTES.get(value.upper(), value.upper())
             continue
         if route == "SILVER":
             return "SILVER"
@@ -155,14 +179,31 @@ def parse_arrival_question(text, stations, aliases, context=None):
         return None
     route = parse_route(text)
     toward = parse_toward(text)
+    if toward and is_here(toward):
+        toward = None
     direction_word, direction = parse_direction(text)
-    explicit = parse_station_phrase(text)
+    near_me = bool(HERE_RE.search(_clean(text)))
+    explicit = parse_station_phrase(re.sub(r"\b(?:right now|right away|currently)\b", " ", HERE_RE.sub(" ", _clean(text))))
+    if explicit and is_here(explicit):
+        explicit = None                       # "from my current location" is the rider, not a station
     toward_name = aliases.get((toward or "").lower(), toward)
-    mentioned = find_station_in_text(text, stations, aliases, exclude=toward_name)
+    mentioned = find_station_in_text(HERE_RE.sub(" ", _clean(text)), stations, aliases, exclude=toward_name)
     asks = bool(ARRIVAL_WORDS.search(text or "")) or bool(re.search(r"\b(train|bus|trolley)s?\b", text or "", re.I)) \
         or direction is not None
+    if near_me and not explicit:
+        # "Next 39 bus toward Back Bay from my current location", "what's leaving near me?"
+        if asks or route or NEARBY_ASK.search(text or ""):
+            return {"station_query": None, "near_me": True, "route": route, "toward": toward,
+                    "direction": direction, "direction_word": direction_word, "followup": False}
+        return None
 
     station_query, followup = explicit, False
+    if not explicit and context.get("near_point") and not context.get("station_name") and len(_clean(text).split()) <= 7 \
+            and (toward or direction is not None or mentioned or route):
+        # "What about toward Forest Hills?" after a nearest-stop answer: same spot, new direction.
+        return {"station_query": None, "near_me": True, "near_point": context["near_point"],
+                "near_place": context.get("near_place"), "route": route or context.get("route"),
+                "toward": toward or mentioned, "direction": direction, "direction_word": direction_word, "followup": True}
     if not explicit and context.get("station_name") and len(_clean(text).split()) <= 7 \
             and (toward or direction is not None or mentioned or route):
         # "What about toward Ashmont?" / "And Braintree?" after an arrivals answer.
@@ -173,6 +214,10 @@ def parse_arrival_question(text, stations, aliases, context=None):
         route = route or context.get("route")
     elif not explicit:
         station_query = mentioned
+    if not station_query and route and asks:
+        # "When is the next 39 bus toward Back Bay?" — no stop named: use the rider's location.
+        return {"station_query": None, "near_me": True, "route": route, "toward": toward,
+                "direction": direction, "direction_word": direction_word, "followup": False}
     if not station_query or not (asks or followup):
         return None
     return {"station_query": station_query, "route": route, "toward": toward,
@@ -213,6 +258,10 @@ def route_label(route_filter, groups):
              "Mattapan": "Mattapan Trolley", "CR": "Commuter Rail", "SILVER": "Silver Line"}
     if route_filter in names:
         return names[route_filter]
+    named = {v: k for k, v in NAMED_BUS_ROUTES.items()}
+    if route_filter in named:
+        n = named[route_filter]
+        return f"Silver Line {n}" if n.startswith("SL") else f"Crosstown {n}"
     if route_filter and route_filter.startswith("Green-"):
         return f"Green Line {route_filter[-1]}"
     if route_filter:
@@ -228,6 +277,8 @@ def build_reply(answer, now):
     what = f"{line} " if line else ""
     checked = answer.get("checked_text")
 
+    if answer.get("kind") == "near":
+        return build_near_reply(answer)
     if status == "ambiguous":
         opts = ", ".join(f"**{c}**" for c in answer["candidates"])
         return f"I found more than one station matching “{answer['query']}”: {opts}. Which one do you mean?"
@@ -260,6 +311,67 @@ def build_reply(answer, now):
             verb = "departs" if item["event"] == "departure" else "arrives"
             status = f" · {item['status']}" if item.get("status") and not re.search(r"boarding", item["status"], re.I) else ""
             lines.append(f"• {item['headsign'] or g['label']} — **{item['countdown']}** ({verb} {item['clock']}){status}")
+    if answer.get("alerts"):
+        lines.append("")
+        lines.append(f"⚠️ {answer['alerts'][0]}")
+    return "\n".join(lines)
+
+
+
+def _distance_text(meters):
+    if meters is None:
+        return ""
+    return f"{meters} m" if meters < 1000 else f"{meters / 1609:.1f} mi"
+
+
+def build_near_reply(answer):
+    """Markdown reply for nearest-stop departures (app.answer_near)."""
+    status = answer["status"]
+    line = answer.get("route_label")
+    what = line or "MBTA"
+    place = answer.get("place")
+    where = f"near **{place}**" if place else "near you"
+    tail = f" toward **{answer['toward']}**" if answer.get("toward") else ""
+    checked = answer.get("checked_text")
+
+    if status == "need_location":
+        short = (line or "").replace("Route ", "")
+        ex = (f"“next {short} bus at Copley”" if line.startswith("Route") else f"“next {line} at Park Street”") \
+            if line else "“next train at Harvard”"
+        return (f"To find the nearest {line + ' ' if line else ''}stop I need your location. Tap **Share my location** "
+                f"(📍) and I’ll look it up right away, or name a stop or station, like {ex}.")
+    if status == "unavailable":
+        return "I couldn’t reach live MBTA predictions just now, so I can’t give you times. Try again in a minute."
+    if status == "no_stops":
+        radius = _distance_text(answer.get("radius_m"))
+        return (f"I couldn’t find a {what + ' ' if line else 'MBTA '}stop within {radius} of "
+                f"{('**' + place + '**') if place else 'you'}. Try the Trip Planner — it can include a longer walk.")
+    if status == "none":
+        msg = f"The MBTA isn’t reporting any upcoming {line + ' ' if line else ''}departures{tail} at stops {where} right now"
+        msg += f" (checked **{checked}**)." if checked else "."
+        others = answer.get("other_directions") or []
+        if others:
+            msg += " Other directions do have predictions: " + "; ".join(
+                f"toward **{o['label']}** in **{o['next']}**" for o in others) + "."
+        else:
+            msg += " Service may have ended for the night or be suspended — check Service Alerts."
+        if answer.get("alerts"):
+            msg += f"\n\n⚠️ {answer['alerts'][0]}"
+        return msg
+
+    icon = "📍" if not line else "🚌" if line.startswith(("Route", "Silver", "Crosstown")) else "🚇"
+    head = f"{line or 'Departures'} toward {answer['toward']}" if answer.get("toward") else (line or "Departures")
+    lines = [f"{icon} **{head} {'near ' + place if place else 'near you'}** — nearest stops, live MBTA predictions"
+             + (f", checked **{checked}**" if checked else "") + ":"]
+    for g in answer["groups"]:
+        lines.append("")
+        dist = _distance_text(g.get("distance_m"))
+        walk = f", ~{g['walk_min']} min walk" if g.get("walk_min") else ""
+        lines.append(f"**{g['route_name']} · toward {g['label']}** — from **{g['stop_name']}** ({dist}{walk})")
+        for item in g["items"]:
+            verb = "departs" if item["event"] == "departure" else "arrives"
+            note = "" if item.get("catchable", True) else " · likely too soon to reach on foot"
+            lines.append(f"• {item['headsign'] or g['label']} — **{item['countdown']}** ({verb} {item['clock']}){note}")
     if answer.get("alerts"):
         lines.append("")
         lines.append(f"⚠️ {answer['alerts'][0]}")

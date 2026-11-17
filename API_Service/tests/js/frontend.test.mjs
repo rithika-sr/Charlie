@@ -312,3 +312,96 @@ test('assistant: trip replies render every itinerary card plus a Trip Planner sh
   assert.match(tripCardsHtml({ code: 'unresolved', origin: 'zzzzz', routes: [] }, 1), /Open in Trip Planner/);
   assert.equal(tripCardsHtml({ code: 'need_origin', routes: [] }, 1), '');
 });
+
+// ---------- Leave now / Depart at / Arrive by ----------
+import { bostonParts, suggestedParts, whenText, WHEN_MODES } from '../../static/js/ui/trip-form.js';
+import { whenSummaryHtml } from '../../static/js/views/trip.js';
+import { nearCardHtml } from '../../static/js/views/assistant.js';
+
+test('trip time: Boston wall clock regardless of the browser time zone', () => {
+  const at = new Date('2026-11-16T22:55:00Z');              // 5:55 PM in Boston (EST)
+  assert.deepEqual(bostonParts(0, at), { date: '2026-11-16', time: '17:55' });
+  assert.deepEqual(bostonParts(10, at), { date: '2026-11-16', time: '18:05' });
+  assert.deepEqual(bostonParts(0, new Date('2026-07-01T16:00:00Z')), { date: '2026-07-01', time: '12:00' });   // EDT
+  assert.deepEqual(suggestedParts(10, new Date('2026-11-16T22:51:00Z')), { date: '2026-11-16', time: '18:05' }); // rounded up to 5 min
+  assert.deepEqual(bostonParts(10, new Date('2026-11-17T04:55:00Z')), { date: '2026-11-17', time: '00:05' });   // past midnight
+});
+
+test('trip time: labels for each mode', () => {
+  const at = new Date('2026-11-16T22:55:00Z');
+  assert.deepEqual(WHEN_MODES.map(m => m.id), ['now', 'depart', 'arrive']);
+  assert.equal(whenText(null, at), 'Leaving now');
+  assert.equal(whenText({ mode: 'depart', time: '2026-11-16T18:05' }, at), 'Leave today at 6:05 PM');
+  assert.equal(whenText({ mode: 'arrive', time: '2026-11-17T09:00' }, at), 'Arrive by 9:00 AM tomorrow');
+  assert.equal(whenText({ mode: 'depart', time: '2026-11-17T00:00:00-05:00' }, at), 'Leave tomorrow at 12:00 AM');
+  assert.match(whenSummaryHtml({ missedDeadline: true, when: { mode: 'arrive', time: '2026-11-16T18:00' } }), /No trip gets you there by that time/);
+});
+
+test('assistant: nearest-stop card shows stop, walk and too-soon warnings, or asks for location', () => {
+  const card = nearCardHtml({ kind: 'near', status: 'ok', updated_at: new Date().toISOString(), groups: [{
+    route_id: '39', route_name: 'Route 39', label: 'Back Bay Station', stop_id: '1357', stop_name: '360 Huntington Ave',
+    distance_m: 47, walk_min: 1, items: [
+      { headsign: 'Back Bay', time: new Date(Date.now() + 30000).toISOString(), event: 'arrival', catchable: false },
+      { headsign: 'Back Bay', time: new Date(Date.now() + 14 * 60000).toISOString(), event: 'arrival', catchable: true }] }] }, 3);
+  assert.match(card, /360 Huntington Ave<\/button> · 47 m · ~1 min walk/);
+  assert.match(card, /data-open-station="1357"/);
+  assert.equal((card.match(/Too soon to walk there/g) || []).length, 1);
+  const ask = nearCardHtml({ kind: 'near', status: 'need_location' }, 5);
+  assert.match(ask, /data-share-loc="5"/);
+});
+
+test('trip: arrive-by results can list the latest departure first', () => {
+  const r = (id, dep, arr, transfers = 0) => ({ id, depart_ts: dep, arrive_ts: arr, duration: (arr - dep) / 60, transfers });
+  const routes = [r('a', 1000, 2000), r('b', 1600, 2500), r('c', 1300, 2200), r('d', 1600, 2400, 1)];
+  assert.deepEqual(sortTrips(routes, 'departure').map(x => x.id), ['b', 'd', 'c', 'a']);   // tie → fewer transfers
+});
+
+// ---------- live vehicle icons and motion ----------
+import { vehicleKind, vehicleIconHtml, nextRotation, lerpLatLng, metersBetween, MarkerMotion } from '../../static/js/map/vehicle-icons.js';
+
+test('vehicles: each mode gets its own glyph, colored for contrast', () => {
+  assert.deepEqual(['Red', 'Orange', 'Blue', 'Green-B', 'Mattapan', 'CR-Worcester', 'Boat-F1', '39', '741'].map(vehicleKind),
+    ['subway', 'subway', 'subway', 'lightrail', 'lightrail', 'train', 'ferry', 'bus', 'bus']);
+  const bus = vehicleIconHtml({ color: '#FFC72C', routeId: '39', bearing: 90, code: '39' });
+  assert.match(bus, /veh--bus/); assert.match(bus, /--ink:#1A1A1A/); assert.match(bus, /--rot:90deg/); assert.match(bus, /veh__tag[^>]*>39</);
+  const red = vehicleIconHtml({ color: '#DA291C', routeId: 'Red', bearing: null });
+  assert.match(red, /veh--subway veh--still/); assert.match(red, /--ink:#FFFFFF/); assert.doesNotMatch(red, /veh__tag/);
+});
+
+test('vehicles: heading turns the short way round', () => {
+  assert.equal(nextRotation(350, 10), 370);
+  assert.equal(nextRotation(10, 350), -10);
+  assert.equal(nextRotation(720, 90), 810);
+  assert.equal(nextRotation(45, null), 45);
+  assert.equal(nextRotation(NaN, 200), 200);
+});
+
+test('vehicles: markers glide to each live position at constant speed', () => {
+  let clock = 0;
+  const frames = [];
+  const motion = new MarkerMotion({ now: () => clock, raf: cb => { frames.push(cb); return frames.length; }, caf: () => {}, reducedMotion: false });
+  const marker = { ll: { lat: 42.35, lng: -71.06 }, getLatLng() { return this.ll; }, setLatLng(p) { this.ll = { lat: p[0], lng: p[1] }; } };
+  const run = t => { clock = t; frames.shift()(t); };
+  assert.equal(motion.move(marker, [42.36, -71.06], 10000), 'glide');           // ~1.1 km
+  run(5000);
+  assert.ok(Math.abs(marker.ll.lat - 42.355) < 1e-9, 'halfway at half time');
+  // A new update mid-glide starts from where the marker is drawn now: no jump back.
+  assert.equal(motion.move(marker, [42.37, -71.06], 10000), 'glide');
+  run(5040);
+  assert.ok(marker.ll.lat > 42.355 && marker.ll.lat < 42.3551);
+  run(15100);
+  assert.deepEqual([marker.ll.lat, marker.ll.lng], [42.37, -71.06]);
+  assert.equal(motion.tracks.size, 0);
+  assert.equal(motion.move(marker, [42.37001, -71.06], 10000), 'none');          // GPS jitter
+  assert.equal(motion.move(marker, [42.6, -71.06], 10000), 'snap');              // implausible jump
+  assert.equal(marker.ll.lat, 42.6);
+  assert.ok(Math.abs(metersBetween([42.35, -71.06], [42.36, -71.06]) - 1113) < 2);
+  assert.deepEqual(lerpLatLng([0, 0], [10, 20], 2), [10, 20]);
+});
+
+test('vehicles: reduced motion snaps instead of gliding', () => {
+  const motion = new MarkerMotion({ now: () => 0, raf: () => 1, caf: () => {}, reducedMotion: true });
+  const marker = { ll: { lat: 42.35, lng: -71.06 }, getLatLng() { return this.ll; }, setLatLng(p) { this.ll = { lat: p[0], lng: p[1] }; } };
+  assert.equal(motion.move(marker, [42.351, -71.06], 10000), 'snap');
+  assert.equal(marker.ll.lat, 42.351);
+});

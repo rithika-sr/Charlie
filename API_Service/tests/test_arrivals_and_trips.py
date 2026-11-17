@@ -328,7 +328,7 @@ def test_trip_parser_and_station_names():
         "Take me to the Airport": (None, "Airport"),
     }
     for text, (o, d) in cases.items():
-        assert trips.parse_trip_question(text, is_place) == {"origin": o, "destination": d}, text
+        assert trips.parse_trip_question(text, is_place) == {"origin": o, "destination": d, "when": None}, text
     assert trips.parse_trip_question("next train from Park Street to Alewife", is_place) is None
     assert trips.parse_trip_question("Are there delays on the Orange Line?", is_place) is None
     assert charlie.find_station_data("Chiswick Rd")["name"] == "Chiswick Road"

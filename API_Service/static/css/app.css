@@ -270,6 +270,9 @@ body.is-locating [data-locate-global] .icon { animation: spin 1s linear infinite
 .msg-card--warn p { color: #F7C887; }
 .msg-card__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); }
 .board__dir { font-size: var(--fs-sm); color: var(--text-2); font-weight: 500; }
+.board__stop { margin: calc(-1 * var(--s1)) 0 var(--s1); }
+.board__stop .link { color: var(--text-2); font-weight: 600; }
+.arrival__warn { color: var(--warn); }
 
 /* Alerts */
 .alert-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; }
@@ -533,7 +536,7 @@ body.panel-open .map-tool--label { width: 44px; padding: 0; }
 .leaflet-control-attribution { background: rgba(9, 13, 20, 0.78) !important; color: var(--text-3) !important; font-size: 10px !important; }
 .leaflet-control-attribution a { color: var(--text-2) !important; }
 .leaflet-marker-icon:focus-visible { outline: none; box-shadow: none; }
-.leaflet-marker-icon:focus-visible .stop, .leaflet-marker-icon:focus-visible .veh { box-shadow: var(--ring); }
+.leaflet-marker-icon:focus-visible .stop, .leaflet-marker-icon:focus-visible .veh__body { box-shadow: var(--ring); }
 .stop-icon, .veh-icon, .me-icon { background: transparent; border: 0; }
 .stop { display: block; width: 10px; height: 10px; margin: 3px; border-radius: 50%; background: var(--canvas); border: 2.5px solid var(--c); transition: transform var(--dur) var(--ease); }
 .stop--hub { width: 12px; height: 12px; margin: 2px; border-width: 3px; }
@@ -541,14 +544,27 @@ body.panel-open .map-tool--label { width: 44px; padding: 0; }
 .z-near .stop { width: 14px; height: 14px; margin: 1px; }
 .leaflet-marker-icon:hover .stop, .is-selected .stop { transform: scale(1.35); }
 .is-selected .stop { background: var(--c); box-shadow: 0 0 0 4px rgba(248, 250, 252, 0.25); }
-.veh { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: rgba(9, 13, 20, 0.78); border: 2px solid var(--c); transform: rotate(var(--rot)); transition: transform 400ms var(--ease); }
-.veh svg { width: 14px; height: 14px; fill: var(--c); }
-.z-far .veh { width: 18px; height: 18px; border-width: 1.5px; margin: 4px; }
-.z-far .veh svg { width: 10px; height: 10px; }
-.z-near .veh { width: 30px; height: 30px; margin: -2px; }
-.z-near .veh svg { width: 16px; height: 16px; }
-.is-selected .veh { background: var(--c); box-shadow: 0 0 0 5px rgba(248, 250, 252, 0.28); }
-.is-selected .veh svg { fill: #fff; }
+/* Live vehicles: mode glyph on the line color, a pointer turned to the heading, and a
+   route tag when zoomed in. Position glides in JS (vehicle-icons.js); the pointer turns here. */
+.veh { position: relative; display: block; width: 32px; height: 32px; }
+.veh__heading { position: absolute; inset: 0; transform: rotate(var(--rot)); transition: transform 1200ms var(--ease); }
+.veh__heading::before { content: ''; position: absolute; left: 50%; top: -2px; transform: translateX(-50%); border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 8px solid var(--c); filter: drop-shadow(0 0 1.5px rgba(9, 13, 20, 0.95)); }
+.veh--still .veh__heading { display: none; }
+.veh__body { position: absolute; inset: 6px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--c); border: 2px solid rgba(9, 13, 20, 0.9); box-shadow: 0 1px 5px rgba(0, 0, 0, 0.5); transition: transform var(--dur) var(--ease), inset var(--dur) var(--ease); }
+.veh--bus .veh__body, .veh--ferry .veh__body { border-radius: 6px; }
+.veh__body svg { width: 13px; height: 13px; fill: var(--ink); }
+.veh__tag { position: absolute; left: calc(100% - 3px); top: 50%; transform: translateY(-50%); display: none; padding: 1px 5px; border-radius: 6px; background: rgba(9, 13, 20, 0.92); border: 1px solid var(--c); color: var(--text); font-size: 10px; font-weight: 700; line-height: 14px; white-space: nowrap; pointer-events: none; }
+.z-far .veh__body { inset: 10px; border-width: 1.5px; }
+.z-far .veh__body svg { display: none; }
+.z-far .veh__heading::before { border-left-width: 4px; border-right-width: 4px; border-bottom-width: 5px; top: 5px; }
+.z-near .veh__body { inset: 4px; }
+.z-near .veh__body svg { width: 15px; height: 15px; }
+.z-near .veh__tag { display: block; }
+.z-near .veh__heading::before { top: -5px; }
+.leaflet-marker-icon:hover .veh__body { transform: scale(1.12); }
+.is-selected .veh__body { transform: scale(1.18); box-shadow: 0 0 0 4px rgba(248, 250, 252, 0.35), 0 1px 5px rgba(0, 0, 0, 0.5); }
+.is-selected .veh__tag { display: block; }
+@media (prefers-reduced-motion: reduce) { .veh__heading, .veh__body { transition: none; } }
 .me { display: block; width: 16px; height: 16px; margin: 1px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 0 0 4px rgba(76, 141, 246, 0.3); }
 
 /* Bus paths are drawn beneath the rail/subway layers but must still get the pointer,
@@ -740,3 +756,14 @@ body[data-route="ai"] .view { padding: 0; max-width: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+/* Trip Planner: Leave now / Depart at / Arrive by */
+.trip-when { border: 0; padding: 0; margin: var(--s3) 0 0; min-width: 0; display: flex; flex-direction: column; gap: var(--s2); }
+.trip-when__modes { display: flex; width: 100%; }
+.trip-when__modes .segmented__btn { flex: 1 1 0; justify-content: center; }
+.trip-when__pick { display: flex; flex-direction: column; gap: var(--s2); }
+.trip-when__pick[hidden] { display: none; }
+.trip-when__inputs { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: var(--s2); }
+.trip-when__inputs .input { height: 40px; color-scheme: dark; }
+.trip-when__quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.trip-when__summary { display: flex; align-items: center; gap: 6px; margin: 0 0 var(--s3); color: var(--text-2); font-size: var(--fs-sm); font-weight: 500; }
